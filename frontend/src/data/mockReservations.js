@@ -1,0 +1,1 @@
+export const mockReservations=[["RS-1001","Nguyen An","Today • 18:30","4","T02","Pending"],["RS-1002","Tran Linh","Today • 19:00","2","T05","Confirmed"],["RS-1003","Le Minh","Tomorrow • 12:00","6","Unassigned","Pending"]];

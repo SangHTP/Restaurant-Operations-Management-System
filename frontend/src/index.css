@@ -1,0 +1,52 @@
+/* 1. Đưa các câu lệnh @import lên đầu file */
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600;1,700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* 2. Cấu hình Font Family cho Tailwind */
+@theme {
+  --font-sans: 'Manrope', sans-serif;
+  --font-serif: 'Cormorant Garamond', serif;
+}
+
+/* 3. Đặt font Manrope làm mặc định toàn trang */
+body {
+  font-family: var(--font-sans);
+  background-color: #f8fafc; /* slate-50 */
+  color: #1e293b; /* slate-800 */
+}
+
+/* 4. Hide browser default ugly number spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* 5. Custom Date & Time Picker Icons for Dark Theme */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.85) sepia(0.5) saturate(2) hue-rotate(5deg);
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px;
+  transition: transform 0.2s ease;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+}
+
+/* Color scheme dark for native popups on dark backgrounds */
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+/* 6. Hide browser default password reveal icons in Edge/IE */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

@@ -1,0 +1,1 @@
+export const mockOrders=[{id:"#ORD-2041",table:"T02",items:"2 × Chicken, 1 × Fries",total:160000,status:"Preparing"},{id:"#ORD-2042",table:"T05",items:"4 × Burger, 4 × Tea",total:308000,status:"Ready"},{id:"#ORD-2043",table:"T03",items:"2 × Noodles",total:140000,status:"Pending"}];

@@ -1,0 +1,1 @@
+import Card from "../common/Card";export default function StatCard({label,value}){return <Card className="p-5"><p className="text-sm text-slate-500">{label}</p><p className="mt-1 text-2xl font-bold">{value}</p></Card>}
