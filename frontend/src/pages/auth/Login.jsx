@@ -5,12 +5,13 @@ import { useAuth, MOCK_ACCOUNTS_DB } from '../../context/AuthContext';
 
 export default function Login() {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { login, loginWithApi } = useAuth();
 
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [activeRoleLabel, setActiveRoleLabel] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
     const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
     const [googleLoadingEmail, setGoogleLoadingEmail] = useState('');
@@ -61,13 +62,14 @@ export default function Login() {
         }, 900);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+        setErrorMessage('');
 
-        setTimeout(() => {
+        try {
+            const user = await loginWithApi(formData.email, formData.password);
             setIsLoading(false);
-            const user = login(formData.email);
 
             if (user.role === 'Customer') {
                 navigate('/profile');
@@ -76,7 +78,10 @@ export default function Login() {
             } else {
                 navigate('/dashboard/profile');
             }
-        }, 800);
+        } catch (error) {
+            setIsLoading(false);
+            setErrorMessage(error.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại Email/Username!');
+        }
     };
 
     return (
@@ -177,6 +182,12 @@ export default function Login() {
                                 Welcome back. Please enter your details below.
                             </p>
                         </div>
+
+                        {errorMessage && (
+                            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-4 py-3 rounded-xl font-medium">
+                                ⚠️ {errorMessage}
+                            </div>
+                        )}
 
                         <form onSubmit={handleSubmit} className="space-y-4 font-sans">
                             <div>

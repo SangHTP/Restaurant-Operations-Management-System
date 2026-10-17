@@ -3,6 +3,7 @@ import customerAvatar from '../assets/avartar/customer.jpg';
 import staffAvatar from '../assets/avartar/staff.jpg';
 import chefAvatar from '../assets/avartar/chef.jpeg';
 import ownAvatar from '../assets/avartar/own.jpg';
+import { loginApi } from '../api/authApi';
 
 const AuthContext = createContext();
 
@@ -90,7 +91,40 @@ export function AuthProvider({ children }) {
         }
     }, [currentUser]);
 
-    // Login
+    // Login với Backend API thật (Thử gọi API trước, nếu lỗi thì tìm trong mock)
+    const loginWithApi = async (emailOrUsername, password) => {
+        try {
+            const userData = await loginApi(emailOrUsername, password);
+            const userObj = {
+                id: userData.id,
+                role: userData.role,
+                name: userData.name,
+                email: userData.email,
+                phone: userData.phone,
+                rewardPoints: userData.rewardPoints || 0,
+                avatar: userData.role === 'Customer' ? customerAvatar :
+                        userData.role === 'Staff' ? staffAvatar :
+                        userData.role === 'Kitchen' ? chefAvatar : ownAvatar,
+                status: userData.status || 'Active',
+            };
+            setCurrentUser(userObj);
+            return userObj;
+        } catch (error) {
+            // Nếu không gọi được API backend hoặc lỗi, thử fallback mock account
+            const found = MOCK_ACCOUNTS_DB.find(
+                (u) => u.email.toLowerCase() === emailOrUsername.toLowerCase()
+            );
+
+            if (found) {
+                setCurrentUser(found);
+                return found;
+            }
+
+            throw error;
+        }
+    };
+
+    // Quick Login demo (Sync)
     const login = (email) => {
         const found = MOCK_ACCOUNTS_DB.find(
             (u) => u.email.toLowerCase() === email.toLowerCase()
@@ -102,7 +136,7 @@ export function AuthProvider({ children }) {
             name: email.split('@')[0],
             email: email,
             phone: '0900 000 000',
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
+            avatar: customerAvatar,
             joinDate: new Date().toISOString().split('T')[0],
             address: 'Can Tho City',
             gender: 'Other',
@@ -127,7 +161,7 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ currentUser, setCurrentUser, login, logout, updateProfile }}>
+        <AuthContext.Provider value={{ currentUser, setCurrentUser, login, loginWithApi, logout, updateProfile }}>
             {children}
         </AuthContext.Provider>
     );
