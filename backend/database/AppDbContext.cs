@@ -14,10 +14,22 @@ namespace backend.database
         public DbSet<Promotion> Promotions { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<MenuItem> MenuItems { get; set; }
+        public DbSet<Area> Areas { get; set; }
+        public DbSet<Table> Tables { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<Area>()
+                .HasIndex(a => a.AreaName)
+                .IsUnique();
+
+            modelBuilder.Entity<Table>()
+                .HasOne(t => t.Area)
+                .WithMany()
+                .HasForeignKey(t => t.AreaID)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Promotion>()
                 .HasIndex(p => p.Code)
