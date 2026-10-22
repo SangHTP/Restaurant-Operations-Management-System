@@ -19,6 +19,9 @@ namespace backend.Models.DTOs
 
         public decimal MinOrderValue { get; set; } = 0;
 
+        [Range(0, int.MaxValue, ErrorMessage = "Số lượng mã phải lớn hơn hoặc bằng 0")]
+        public int Count { get; set; } = 0;
+
         [Required]
         public DateTime StartDate { get; set; }
 
