@@ -4,15 +4,15 @@ namespace backend.Models.DTOs
 {
     public class CreateTableDto
     {
-        [Required(ErrorMessage = "Vui lòng chọn khu vực.")]
+        [Required(ErrorMessage = "Please select an area.")]
         public int AreaID { get; set; }
 
-        [Required(ErrorMessage = "Tên bàn không được để trống.")]
-        [StringLength(50, MinimumLength = 1, ErrorMessage = "Tên bàn từ 1 đến 50 ký tự.")]
+        [Required(ErrorMessage = "Table name cannot be empty.")]
+        [StringLength(50, MinimumLength = 1, ErrorMessage = "Table name must be between 1 and 50 characters.")]
         public string TableName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Sức chứa không được để trống.")]
-        [Range(1, 100, ErrorMessage = "Sức chứa phải từ 1 đến 100 người.")]
+        [Required(ErrorMessage = "Capacity cannot be empty.")]
+        [Range(1, 100, ErrorMessage = "Capacity must be between 1 and 100.")]
         public int Capacity { get; set; }
 
         [StringLength(50)]
@@ -21,18 +21,18 @@ namespace backend.Models.DTOs
 
     public class UpdateTableDto
     {
-        [Required(ErrorMessage = "Vui lòng chọn khu vực.")]
+        [Required(ErrorMessage = "Please select an area.")]
         public int AreaID { get; set; }
 
-        [Required(ErrorMessage = "Tên bàn không được để trống.")]
-        [StringLength(50, MinimumLength = 1, ErrorMessage = "Tên bàn từ 1 đến 50 ký tự.")]
+        [Required(ErrorMessage = "Table name cannot be empty.")]
+        [StringLength(50, MinimumLength = 1, ErrorMessage = "Table name must be between 1 and 50 characters.")]
         public string TableName { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Sức chứa không được để trống.")]
-        [Range(1, 100, ErrorMessage = "Sức chứa phải từ 1 đến 100 người.")]
+        [Required(ErrorMessage = "Capacity cannot be empty.")]
+        [Range(1, 100, ErrorMessage = "Capacity must be between 1 and 100.")]
         public int Capacity { get; set; }
 
-        [Required(ErrorMessage = "Trạng thái bàn không được để trống.")]
+        [Required(ErrorMessage = "Table status cannot be empty.")]
         [StringLength(50)]
         public string Status { get; set; } = "Available";
     }

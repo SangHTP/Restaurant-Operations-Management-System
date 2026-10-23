@@ -23,6 +23,7 @@ namespace backend.Controllers
         {
             var areas = await _context.Areas
                 .AsNoTracking()
+                .Where(a => !a.IsDeleted)
                 .OrderBy(a => a.AreaID)
                 .ToListAsync();
 
@@ -35,14 +36,11 @@ namespace backend.Controllers
         {
             var area = await _context.Areas
                 .AsNoTracking()
-                .FirstOrDefaultAsync(a => a.AreaID == id);
+                .FirstOrDefaultAsync(a => a.AreaID == id && !a.IsDeleted);
 
             if (area == null)
             {
-                return NotFound(new
-                {
-                    message = "Không tìm thấy khu vực."
-                });
+                return NotFound(new { message = "Area not found." });
             }
 
             return Ok(area);
@@ -56,27 +54,22 @@ namespace backend.Controllers
 
             if (string.IsNullOrWhiteSpace(areaName))
             {
-                return BadRequest(new
-                {
-                    message = "Tên khu vực không được để trống."
-                });
+                return BadRequest(new { message = "Area name cannot be empty." });
             }
 
             var isDuplicate = await _context.Areas
-                .AnyAsync(a => a.AreaName.ToLower() == areaName.ToLower());
+                .AnyAsync(a => a.AreaName.ToLower() == areaName.ToLower() && !a.IsDeleted);
 
             if (isDuplicate)
             {
-                return Conflict(new
-                {
-                    message = $"Khu vực '{areaName}' đã tồn tại."
-                });
+                return Conflict(new { message = $"Area '{areaName}' already exists." });
             }
 
             var area = new Area
             {
                 AreaName = areaName,
-                Description = dto.Description?.Trim()
+                Description = dto.Description?.Trim(),
+                IsDeleted = false
             };
 
             _context.Areas.Add(area);
@@ -89,35 +82,26 @@ namespace backend.Controllers
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateAreaDto dto)
         {
-            var area = await _context.Areas.FindAsync(id);
+            var area = await _context.Areas.FirstOrDefaultAsync(a => a.AreaID == id && !a.IsDeleted);
 
             if (area == null)
             {
-                return NotFound(new
-                {
-                    message = "Không tìm thấy khu vực cần cập nhật."
-                });
+                return NotFound(new { message = "Area not found for update." });
             }
 
             var areaName = dto.AreaName?.Trim();
 
             if (string.IsNullOrWhiteSpace(areaName))
             {
-                return BadRequest(new
-                {
-                    message = "Tên khu vực không được để trống."
-                });
+                return BadRequest(new { message = "Area name cannot be empty." });
             }
 
             var isDuplicate = await _context.Areas
-                .AnyAsync(a => a.AreaID != id && a.AreaName.ToLower() == areaName.ToLower());
+                .AnyAsync(a => a.AreaID != id && a.AreaName.ToLower() == areaName.ToLower() && !a.IsDeleted);
 
             if (isDuplicate)
             {
-                return Conflict(new
-                {
-                    message = $"Tên khu vực '{areaName}' đã được sử dụng."
-                });
+                return Conflict(new { message = $"Area name '{areaName}' is already in use." });
             }
 
             area.AreaName = areaName;
@@ -125,11 +109,42 @@ namespace backend.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new
+            return Ok(new { message = "Area updated successfully.", data = area });
+        }
+
+        // DELETE: api/areas/{id}
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            var area = await _context.Areas.FirstOrDefaultAsync(a => a.AreaID == id && !a.IsDeleted);
+            if (area == null)
             {
-                message = "Cập nhật khu vực thành công.",
-                data = area
-            });
+                return NotFound(new { message = "Area not found for deletion." });
+            }
+
+            // Check if any active tables belong to this area
+            var activeTables = await _context.Tables
+                .Where(t => t.AreaID == id && !t.IsDeleted)
+                .ToListAsync();
+
+            if (activeTables.Any())
+            {
+                // Soft delete area AND soft delete all tables belonging to this area
+                area.IsDeleted = true;
+                foreach (var table in activeTables)
+                {
+                    table.IsDeleted = true;
+                }
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Area and its active tables have been soft deleted successfully.", softDeleted = true });
+            }
+            else
+            {
+                // Hard delete area if no active tables exist
+                _context.Areas.Remove(area);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Area deleted permanently successfully.", softDeleted = false });
+            }
         }
     }
 }

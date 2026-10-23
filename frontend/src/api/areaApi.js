@@ -71,3 +71,12 @@ export async function updateArea(id, areaData) {
         })
     );
 }
+
+// DELETE: Xóa khu vực (Cứng hoặc Mềm tùy thuộc liên kết bàn)
+export async function deleteArea(id) {
+    return await readResponse(
+        await fetch(`${API_BASE_URL}/areas/${id}`, {
+            method: 'DELETE'
+        })
+    );
+}

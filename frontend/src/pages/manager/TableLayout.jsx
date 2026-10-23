@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { INITIAL_AREAS, INITIAL_TABLES, STATUS_STYLES, TABLE_STATUSES } from '../../data/mockTables';
 import { useAuth } from '../../context/AuthContext';
-import { getAreas, createArea, updateArea } from '../../api/areaApi';
+import { getAreas, createArea, updateArea, deleteArea } from '../../api/areaApi';
 import { getTables, createTable, updateTable, deleteTable } from '../../api/tableApi';
 
 /* ─── Refined Status Badge ─── */
@@ -194,13 +194,45 @@ export default function TableLayout() {
             showToast(`Lỗi CSDL: ${err.message}`, 'error');
         }
     };
-    const handleUpdateArea = (e) => {
+    const handleUpdateArea = async (e) => {
         e.preventDefault();
-        setAreas(prev => prev.map(a => a.id === areaModal.id ? { ...areaModal } : a));
-        setAreaModal(null);
-        showToast(`Area updated`);
+        try {
+            await updateArea(areaModal.id, {
+                name: areaModal.name,
+                description: areaModal.description
+            });
+            setAreas(prev => prev.map(a => a.id === areaModal.id ? { ...areaModal } : a));
+            setAreaModal(null);
+            showToast(`Area updated successfully`);
+        } catch (err) {
+            console.error('Error updating area:', err);
+            showToast(`Error: ${err.message}`, 'error');
+        }
     };
     const [confirmModal, setConfirmModal] = useState(null);
+
+    const handleDeleteArea = (id, name) => {
+        setConfirmModal({
+            title: 'Delete Area',
+            message: `Are you sure you want to delete area "${name}"? If there are active tables linked to this area, it will be soft-deleted.`,
+            actionText: 'Delete Area',
+            onConfirm: async () => {
+                try {
+                    const res = await deleteArea(id);
+                    setAreas(prev => prev.filter(a => a.id !== String(id)));
+                    if (!res.softDeleted) {
+                        setTables(prev => prev.filter(t => t.areaId !== String(id)));
+                    }
+                    if (selectedAreaId === String(id)) setSelectedAreaId(areas.find(a => a.id !== String(id))?.id || null);
+                    setConfirmModal(null);
+                    showToast(res.message || `Area "${name}" deleted`, res.softDeleted ? 'info' : 'error');
+                } catch (err) {
+                    console.error('Error deleting area:', err);
+                    showToast(`Error: ${err.message}`, 'error');
+                }
+            }
+        });
+    };
 
     const handleCreateTable = async (e) => {
         e.preventDefault();
@@ -663,6 +695,10 @@ export default function TableLayout() {
                                                         <button onClick={() => setAreaModal({...a})}
                                                             className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-200 transition">
                                                             ✏ Edit
+                                                        </button>
+                                                        <button onClick={() => handleDeleteArea(a.id, a.name)}
+                                                            className="px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-rose-100 transition">
+                                                            🗑 Delete
                                                         </button>
                                                     </div>
                                                 )}

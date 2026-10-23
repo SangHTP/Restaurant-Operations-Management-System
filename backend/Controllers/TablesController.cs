@@ -49,7 +49,7 @@ namespace backend.Controllers
 
             if (table == null)
             {
-                return NotFound(new { message = "Không tìm thấy bàn." });
+                return NotFound(new { message = "Table not found." });
             }
 
             return Ok(table);
@@ -63,13 +63,13 @@ namespace backend.Controllers
             var areaExists = await _context.Areas.AnyAsync(a => a.AreaID == dto.AreaID && !a.IsDeleted);
             if (!areaExists)
             {
-                return BadRequest(new { message = "Khu vực được chọn không tồn tại hoặc đã bị xóa." });
+                return BadRequest(new { message = "Selected area does not exist or has been deleted." });
             }
 
             var tableName = dto.TableName?.Trim();
             if (string.IsNullOrWhiteSpace(tableName))
             {
-                return BadRequest(new { message = "Tên bàn không được để trống." });
+                return BadRequest(new { message = "Table name cannot be empty." });
             }
 
             // Check duplicate table name in same area
@@ -78,7 +78,7 @@ namespace backend.Controllers
 
             if (isDuplicate)
             {
-                return Conflict(new { message = $"Bàn '{tableName}' đã tồn tại trong khu vực này." });
+                return Conflict(new { message = $"Table '{tableName}' already exists in this area." });
             }
 
             var table = new Table
@@ -103,19 +103,19 @@ namespace backend.Controllers
             var table = await _context.Tables.FirstOrDefaultAsync(t => t.TableID == id && !t.IsDeleted);
             if (table == null)
             {
-                return NotFound(new { message = "Không tìm thấy bàn cần cập nhật." });
+                return NotFound(new { message = "Table not found for update." });
             }
 
             var areaExists = await _context.Areas.AnyAsync(a => a.AreaID == dto.AreaID && !a.IsDeleted);
             if (!areaExists)
             {
-                return BadRequest(new { message = "Khu vực được chọn không tồn tại." });
+                return BadRequest(new { message = "Selected area does not exist." });
             }
 
             var tableName = dto.TableName?.Trim();
             if (string.IsNullOrWhiteSpace(tableName))
             {
-                return BadRequest(new { message = "Tên bàn không được để trống." });
+                return BadRequest(new { message = "Table name cannot be empty." });
             }
 
             var isDuplicate = await _context.Tables
@@ -123,7 +123,7 @@ namespace backend.Controllers
 
             if (isDuplicate)
             {
-                return Conflict(new { message = $"Bàn '{tableName}' đã tồn tại trong khu vực này." });
+                return Conflict(new { message = $"Table '{tableName}' already exists in this area." });
             }
 
             table.AreaID = dto.AreaID;
@@ -133,7 +133,7 @@ namespace backend.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Cập nhật bàn thành công.", data = table });
+            return Ok(new { message = "Table updated successfully.", data = table });
         }
 
         // DELETE: api/tables/{id}
@@ -143,7 +143,7 @@ namespace backend.Controllers
             var table = await _context.Tables.FirstOrDefaultAsync(t => t.TableID == id && !t.IsDeleted);
             if (table == null)
             {
-                return NotFound(new { message = "Không tìm thấy bàn cần xóa." });
+                return NotFound(new { message = "Table not found for deletion." });
             }
 
             bool hasOrderLinks = false;
@@ -170,14 +170,14 @@ namespace backend.Controllers
                 // Soft delete
                 table.IsDeleted = true;
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "Bàn đã có liên kết lịch sử. Đã thực hiện xóa mềm thành công.", softDeleted = true });
+                return Ok(new { message = "Table has historical links. Soft deleted successfully.", softDeleted = true });
             }
             else
             {
                 // Hard delete
                 _context.Tables.Remove(table);
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "Đã xóa vĩnh viễn bàn thành công.", softDeleted = false });
+                return Ok(new { message = "Table deleted permanently successfully.", softDeleted = false });
             }
         }
     }
