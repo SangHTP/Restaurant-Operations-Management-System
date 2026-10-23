@@ -175,10 +175,11 @@ export default function TableLayout() {
     const handleCreateArea = async (e) => {
         e.preventDefault();
         try {
-            const created = await createArea({
+            const res = await createArea({
                 name: areaForm.name,
                 description: areaForm.description
             });
+            const created = res.data || res;
             const newArea = {
                 id: String(created.areaID || `area-${Date.now()}`),
                 name: created.areaName || areaForm.name,
@@ -188,22 +189,22 @@ export default function TableLayout() {
             setAreas(prev => [...prev, newArea]);
             setSelectedAreaId(newArea.id);
             setAreaModal(null);
-            showToast(`Đã thêm khu vực "${newArea.name}"`);
+            showToast(res.message || "Area created successfully.");
         } catch (err) {
-            console.error('Lỗi khi lưu khu vực vào DB:', err);
-            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+            console.error('Error creating area:', err);
+            showToast(`Error: ${err.message}`, 'error');
         }
     };
     const handleUpdateArea = async (e) => {
         e.preventDefault();
         try {
-            await updateArea(areaModal.id, {
+            const res = await updateArea(areaModal.id, {
                 name: areaModal.name,
                 description: areaModal.description
             });
             setAreas(prev => prev.map(a => a.id === areaModal.id ? { ...areaModal } : a));
             setAreaModal(null);
-            showToast(`Area updated successfully`);
+            showToast(res.message || "Area updated successfully.");
         } catch (err) {
             console.error('Error updating area:', err);
             showToast(`Error: ${err.message}`, 'error');
@@ -237,12 +238,13 @@ export default function TableLayout() {
     const handleCreateTable = async (e) => {
         e.preventDefault();
         try {
-            const created = await createTable({
+            const res = await createTable({
                 areaId: tableForm.areaId || selectedAreaId,
                 name: tableForm.name,
                 seats: tableForm.seats,
                 status: 'Available'
             });
+            const created = res.data || res;
             const count = (areaTableMap[tableForm.areaId || selectedAreaId] || []).length;
             const newTable = {
                 id: String(created.tableID || `T-${Date.now()}`),
@@ -258,17 +260,17 @@ export default function TableLayout() {
             };
             setTables(prev => [...prev, newTable]);
             setTableModal(null);
-            showToast(`Đã tạo bàn "${newTable.name}" (Trạng thái: Available)`);
+            showToast(res.message || "Table created successfully.");
         } catch (err) {
-            console.error('Lỗi tạo bàn:', err);
-            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+            console.error('Error creating table:', err);
+            showToast(`Error: ${err.message}`, 'error');
         }
     };
 
     const handleUpdateTable = async (e) => {
         e.preventDefault();
         try {
-            await updateTable(tableModal.id, {
+            const res = await updateTable(tableModal.id, {
                 areaId: tableModal.areaId,
                 name: tableModal.name,
                 seats: tableModal.seats,
@@ -276,28 +278,28 @@ export default function TableLayout() {
             });
             setTables(prev => prev.map(t => t.id === tableModal.id ? { ...tableModal, seats: Number(tableModal.seats) } : t));
             setTableModal(null); setSelectedTable(null);
-            showToast(`Cập nhật bàn thành công`);
+            showToast(res.message || "Table updated successfully.");
         } catch (err) {
-            console.error('Lỗi cập nhật bàn:', err);
-            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+            console.error('Error updating table:', err);
+            showToast(`Error: ${err.message}`, 'error');
         }
     };
 
     const handleDeleteTable = (t) => {
         setConfirmModal({
-            title: 'Xóa Bàn',
-            message: `Bạn có chắc muốn xóa bàn "${t.name}"? (Nếu bàn đã có liên kết lịch sử, hệ thống sẽ thực hiện xóa mềm).`,
-            actionText: 'Xóa Bàn',
+            title: 'Delete Table',
+            message: `Are you sure you want to delete table "${t.name}"? (If table has historical links, it will be soft-deleted).`,
+            actionText: 'Delete Table',
             onConfirm: async () => {
                 try {
                     const res = await deleteTable(t.id);
                     setTables(prev => prev.filter(x => x.id !== t.id));
                     setSelectedTable(null);
                     setConfirmModal(null);
-                    showToast(res.message || `Đã xóa bàn "${t.name}"`, res.softDeleted ? 'info' : 'error');
+                    showToast(res.message || `Table "${t.name}" deleted successfully.`, res.softDeleted ? 'info' : 'error');
                 } catch (err) {
-                    console.error('Lỗi xóa bàn:', err);
-                    showToast(`Lỗi: ${err.message}`, 'error');
+                    console.error('Error deleting table:', err);
+                    showToast(`Error: ${err.message}`, 'error');
                 }
             }
         });

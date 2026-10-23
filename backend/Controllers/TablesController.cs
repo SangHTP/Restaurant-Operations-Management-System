@@ -93,7 +93,7 @@ namespace backend.Controllers
             _context.Tables.Add(table);
             await _context.SaveChangesAsync();
 
-            return Ok(table);
+            return Ok(new { message = "Table created successfully.", data = table });
         }
 
         // PUT: api/tables/{id}

@@ -75,7 +75,7 @@ namespace backend.Controllers
             _context.Areas.Add(area);
             await _context.SaveChangesAsync();
 
-            return Ok(area);
+            return Ok(new { message = "Area created successfully.", data = area });
         }
 
         // PUT: api/areas/{id}
