@@ -1,6 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { INITIAL_AREAS, INITIAL_TABLES, STATUS_STYLES, TABLE_STATUSES } from '../../data/mockTables';
 import { useAuth } from '../../context/AuthContext';
+import { getAreas, createArea, updateArea, deleteArea } from '../../api/areaApi';
+import { getTables, createTable, updateTable, deleteTable } from '../../api/tableApi';
 
 /* ─── Refined Status Badge ─── */
 function StatusBadge({ status, small = false }) {
@@ -45,13 +47,7 @@ function FloorTable({ table, isSelected, onSelect, onRightClick }) {
             {chairs.map((c, i) => (
                 <div
                     key={i}
-                    className={`absolute w-3 h-3 rounded-sm border transition-colors duration-300
-                        ${table.status === 'Available' ? 'bg-emerald-200 border-emerald-400' :
-                          table.status === 'Occupied' ? 'bg-rose-200 border-rose-400' :
-                          table.status === 'Reserved' ? 'bg-amber-200 border-amber-400' :
-                          table.status === 'Cleaning' ? 'bg-sky-200 border-sky-300' :
-                          table.status === 'Merged' ? 'bg-violet-200 border-violet-400' :
-                          'bg-orange-200 border-orange-400'}`}
+                    className={`absolute w-3 h-3 rounded-sm border transition-colors duration-300 ${s.light} ${s.border}`}
                     style={{
                         left: `calc(50% + ${c.x}px - 6px)`,
                         top: `calc(50% + ${c.y}px - 6px)`,
@@ -68,21 +64,10 @@ function FloorTable({ table, isSelected, onSelect, onRightClick }) {
                 ${isSelected
                     ? 'ring-[3px] ring-offset-2 ring-[#DCC8A8] shadow-lg scale-110 z-30'
                     : 'group-hover:scale-105 group-hover:shadow-lg'}
-                ${table.status === 'Available' ? 'bg-white border-emerald-400 text-emerald-700' :
-                  table.status === 'Occupied' ? 'bg-rose-50 border-rose-400 text-rose-700' :
-                  table.status === 'Reserved' ? 'bg-amber-50 border-amber-400 text-amber-700' :
-                  table.status === 'Cleaning' ? 'bg-sky-50 border-sky-400 text-sky-700' :
-                  table.status === 'Merged' ? 'bg-violet-50 border-violet-400 text-violet-700' :
-                  'bg-orange-50 border-orange-400 text-orange-700'}
+                ${s.light} ${s.border} ${s.text} bg-white
             `}>
                 <span className="text-[11px] font-bold leading-none">{table.name}</span>
                 <span className="text-[8px] font-medium opacity-70 mt-0.5">{seats}p</span>
-
-                {table.mergedWith && (
-                    <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-violet-500 text-white text-[7px] font-bold flex items-center justify-center border border-white">
-                        M
-                    </div>
-                )}
             </div>
 
             {/* Hover tooltip */}
@@ -106,6 +91,7 @@ export default function TableLayout() {
     const [selectedAreaId, setSelectedAreaId] = useState('area-1');
     const [selectedTable, setSelectedTable] = useState(null);
     const [viewMode, setViewMode] = useState('floorplan');
+    const [listTab, setListTab] = useState('tables'); // 'tables' | 'areas'
 
     const [toast, setToast] = useState(null);
     const showToast = (msg, type = 'info') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
@@ -118,7 +104,7 @@ export default function TableLayout() {
     const [mergeModal, setMergeModal] = useState(null);
 
     // Forms
-    const [areaForm, setAreaForm] = useState({ name: '', description: '', capacity: 40, icon: '🏛️' });
+    const [areaForm, setAreaForm] = useState({ name: '', description: '' });
     const [tableForm, setTableForm] = useState({ name: '', seats: 4, areaId: selectedAreaId, status: 'Available' });
 
     const currentArea = useMemo(() => areas.find(a => a.id === selectedAreaId), [areas, selectedAreaId]);
@@ -137,67 +123,182 @@ export default function TableLayout() {
             occupied: t.filter(x => x.status === 'Occupied').length,
             reserved: t.filter(x => x.status === 'Reserved').length,
             cleaning: t.filter(x => x.status === 'Cleaning').length,
-            merged: t.filter(x => x.status === 'Merged').length,
         };
     }, [floorTables]);
 
+    // ── Load Areas & Tables from API ──
+    useEffect(() => {
+        async function loadData() {
+            try {
+                const apiAreas = await getAreas();
+                if (Array.isArray(apiAreas)) {
+                    const formattedAreas = apiAreas.map(a => ({
+                        id: String(a.areaID || a.id),
+                        name: a.areaName || a.name,
+                        description: a.description || '',
+                        color: '#0b132b'
+                    }));
+                    setAreas(formattedAreas);
+                    if (formattedAreas.length > 0) {
+                        setSelectedAreaId(formattedAreas[0].id);
+                    }
+                }
+            } catch (err) {
+                console.log('Error loading areas:', err);
+            }
+
+            try {
+                const apiTables = await getTables();
+                if (Array.isArray(apiTables)) {
+                    const formattedTables = apiTables.map((t, index) => ({
+                        id: String(t.tableID || t.id),
+                        areaId: String(t.areaID || t.areaId),
+                        name: t.tableName || t.name,
+                        seats: t.capacity || t.seats || 4,
+                        status: t.status || 'Available',
+                        x: 12 + (index % 5) * 18,
+                        y: 18 + Math.floor(index / 5) * 32,
+                        guest: null,
+                        mergedWith: null,
+                        note: ''
+                    }));
+                    setTables(formattedTables);
+                }
+            } catch (err) {
+                console.log('Error loading tables:', err);
+            }
+        }
+        loadData();
+    }, []);
+
     // ── Handlers ──
-    const handleCreateArea = (e) => {
+    const handleCreateArea = async (e) => {
         e.preventDefault();
-        setAreas([...areas, { id: `area-${Date.now()}`, ...areaForm, color: '#0b132b' }]);
-        setAreaModal(null);
-        showToast(`Area "${areaForm.name}" created`);
+        try {
+            const created = await createArea({
+                name: areaForm.name,
+                description: areaForm.description
+            });
+            const newArea = {
+                id: String(created.areaID || `area-${Date.now()}`),
+                name: created.areaName || areaForm.name,
+                description: created.description || areaForm.description,
+                color: '#0b132b'
+            };
+            setAreas(prev => [...prev, newArea]);
+            setSelectedAreaId(newArea.id);
+            setAreaModal(null);
+            showToast(`Đã thêm khu vực "${newArea.name}"`);
+        } catch (err) {
+            console.error('Lỗi khi lưu khu vực vào DB:', err);
+            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+        }
     };
-    const handleUpdateArea = (e) => {
+    const handleUpdateArea = async (e) => {
         e.preventDefault();
-        setAreas(prev => prev.map(a => a.id === areaModal.id ? { ...areaModal } : a));
-        setAreaModal(null);
-        showToast(`Area updated`);
+        try {
+            await updateArea(areaModal.id, {
+                name: areaModal.name,
+                description: areaModal.description
+            });
+            setAreas(prev => prev.map(a => a.id === areaModal.id ? { ...areaModal } : a));
+            setAreaModal(null);
+            showToast(`Area updated successfully`);
+        } catch (err) {
+            console.error('Error updating area:', err);
+            showToast(`Error: ${err.message}`, 'error');
+        }
     };
     const [confirmModal, setConfirmModal] = useState(null);
 
     const handleDeleteArea = (id, name) => {
         setConfirmModal({
-            title: 'Delete Dining Area',
-            message: `Are you sure you want to delete area "${name}" and all its tables? This action cannot be undone.`,
+            title: 'Delete Area',
+            message: `Are you sure you want to delete area "${name}"? If there are active tables linked to this area, it will be soft-deleted.`,
             actionText: 'Delete Area',
-            onConfirm: () => {
-                setAreas(prev => prev.filter(a => a.id !== id));
-                setTables(prev => prev.filter(t => t.areaId !== id));
-                if (selectedAreaId === id) setSelectedAreaId(areas[0]?.id);
-                showToast(`Area "${name}" deleted`, 'error');
-                setConfirmModal(null);
+            onConfirm: async () => {
+                try {
+                    const res = await deleteArea(id);
+                    setAreas(prev => prev.filter(a => a.id !== String(id)));
+                    if (!res.softDeleted) {
+                        setTables(prev => prev.filter(t => t.areaId !== String(id)));
+                    }
+                    if (selectedAreaId === String(id)) setSelectedAreaId(areas.find(a => a.id !== String(id))?.id || null);
+                    setConfirmModal(null);
+                    showToast(res.message || `Area "${name}" deleted`, res.softDeleted ? 'info' : 'error');
+                } catch (err) {
+                    console.error('Error deleting area:', err);
+                    showToast(`Error: ${err.message}`, 'error');
+                }
             }
         });
     };
-    const handleCreateTable = (e) => {
+
+    const handleCreateTable = async (e) => {
         e.preventDefault();
-        const count = (areaTableMap[tableForm.areaId] || []).length;
-        setTables([...tables, {
-            id: `T-${Date.now()}`, ...tableForm,
-            seats: Number(tableForm.seats),
-            x: 12 + (count % 5) * 18, y: 18 + Math.floor(count / 5) * 32,
-            guest: null, mergedWith: null, note: '',
-        }]);
-        setTableModal(null);
-        showToast(`Table "${tableForm.name}" created`);
+        try {
+            const created = await createTable({
+                areaId: tableForm.areaId || selectedAreaId,
+                name: tableForm.name,
+                seats: tableForm.seats,
+                status: 'Available'
+            });
+            const count = (areaTableMap[tableForm.areaId || selectedAreaId] || []).length;
+            const newTable = {
+                id: String(created.tableID || `T-${Date.now()}`),
+                areaId: String(created.areaID || tableForm.areaId || selectedAreaId),
+                name: created.tableName || tableForm.name,
+                seats: Number(created.capacity || tableForm.seats),
+                status: created.status || 'Available',
+                x: 12 + (count % 5) * 18,
+                y: 18 + Math.floor(count / 5) * 32,
+                guest: null,
+                mergedWith: null,
+                note: ''
+            };
+            setTables(prev => [...prev, newTable]);
+            setTableModal(null);
+            showToast(`Đã tạo bàn "${newTable.name}" (Trạng thái: Available)`);
+        } catch (err) {
+            console.error('Lỗi tạo bàn:', err);
+            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+        }
     };
-    const handleUpdateTable = (e) => {
+
+    const handleUpdateTable = async (e) => {
         e.preventDefault();
-        setTables(prev => prev.map(t => t.id === tableModal.id ? { ...tableModal, seats: Number(tableModal.seats) } : t));
-        setTableModal(null); setSelectedTable(null);
-        showToast(`Table updated`);
+        try {
+            await updateTable(tableModal.id, {
+                areaId: tableModal.areaId,
+                name: tableModal.name,
+                seats: tableModal.seats,
+                status: tableModal.status
+            });
+            setTables(prev => prev.map(t => t.id === tableModal.id ? { ...tableModal, seats: Number(tableModal.seats) } : t));
+            setTableModal(null); setSelectedTable(null);
+            showToast(`Cập nhật bàn thành công`);
+        } catch (err) {
+            console.error('Lỗi cập nhật bàn:', err);
+            showToast(`Lỗi CSDL: ${err.message}`, 'error');
+        }
     };
+
     const handleDeleteTable = (t) => {
         setConfirmModal({
-            title: 'Delete Table',
-            message: `Are you sure you want to remove table "${t.name}" from the floor plan?`,
-            actionText: 'Delete Table',
-            onConfirm: () => {
-                setTables(prev => prev.filter(x => x.id !== t.id));
-                setSelectedTable(null);
-                showToast(`Table "${t.name}" deleted`, 'error');
-                setConfirmModal(null);
+            title: 'Xóa Bàn',
+            message: `Bạn có chắc muốn xóa bàn "${t.name}"? (Nếu bàn đã có liên kết lịch sử, hệ thống sẽ thực hiện xóa mềm).`,
+            actionText: 'Xóa Bàn',
+            onConfirm: async () => {
+                try {
+                    const res = await deleteTable(t.id);
+                    setTables(prev => prev.filter(x => x.id !== t.id));
+                    setSelectedTable(null);
+                    setConfirmModal(null);
+                    showToast(res.message || `Đã xóa bàn "${t.name}"`, res.softDeleted ? 'info' : 'error');
+                } catch (err) {
+                    console.error('Lỗi xóa bàn:', err);
+                    showToast(`Lỗi: ${err.message}`, 'error');
+                }
             }
         });
     };
@@ -277,7 +378,7 @@ export default function TableLayout() {
                         </div>
                         {isManager && (
                             <>
-                                <button onClick={() => { setAreaForm({ name:'', description:'', capacity:40, icon:'🏛️' }); setAreaModal('create'); }}
+                                <button onClick={() => { setAreaForm({ name:'', description:'' }); setAreaModal('create'); }}
                                     className="px-3 py-1.5 bg-white/10 hover:bg-white/15 border border-white/15 text-[#DCC8A8] text-[11px] font-semibold rounded-lg transition cursor-pointer">+ Area</button>
                                 <button onClick={() => { setTableForm({ name:'', seats:4, areaId:selectedAreaId, status:'Available' }); setTableModal('create'); }}
                                     className="px-3.5 py-1.5 bg-[#DCC8A8] text-[#081126] text-[11px] font-bold rounded-lg shadow hover:brightness-110 transition cursor-pointer">+ Table</button>
@@ -294,7 +395,6 @@ export default function TableLayout() {
                         { l: 'Occupied', v: stats.occupied, c: 'text-rose-400' },
                         { l: 'Reserved', v: stats.reserved, c: 'text-amber-400' },
                         { l: 'Cleaning', v: stats.cleaning, c: 'text-sky-400' },
-                        { l: 'Merged', v: stats.merged, c: 'text-violet-400' },
                     ].map(s => (
                         <div key={s.l} className="bg-white/5 border border-white/10 rounded-lg px-3.5 py-2 min-w-[80px]">
                             <span className={`text-lg font-bold block leading-none ${s.c}`}>{s.v}</span>
@@ -448,22 +548,8 @@ export default function TableLayout() {
                                                 ⚡ Update Status
                                             </button>
                                         )}
-                                        <div className="grid grid-cols-2 gap-1.5">
-                                            {isStaff && selectedTable.status === 'Occupied' && (
-                                                <button onClick={() => setTransferModal(selectedTable)}
-                                                    className="py-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-orange-100 transition">
-                                                    🔄 Transfer
-                                                </button>
-                                            )}
-                                            {isStaff && (
-                                                <button onClick={() => selectedTable.mergedWith ? handleSplit(selectedTable) : setMergeModal(selectedTable)}
-                                                    className="py-1.5 bg-violet-50 border border-violet-200 text-violet-700 text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-violet-100 transition">
-                                                    {selectedTable.mergedWith ? '✂ Split' : '🔗 Merge'}
-                                                </button>
-                                            )}
-                                        </div>
                                         {isManager && (
-                                            <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-100">
+                                            <div className="grid grid-cols-2 gap-1.5 pt-1">
                                                 <button onClick={() => setTableModal({...selectedTable})}
                                                     className="py-1.5 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-slate-100 transition">
                                                     ✏ Edit
@@ -518,48 +604,111 @@ export default function TableLayout() {
             {/* ═══ LIST VIEW ═══ */}
             {viewMode === 'list' && (
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h2 className="text-sm font-bold text-slate-800">{currentArea?.name} — All Tables</h2>
-                        <span className="text-[10px] text-slate-400">{floorTables.length} tables</span>
+                    <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center gap-2">
+                            <button onClick={() => setListTab('tables')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer
+                                    ${listTab === 'tables' ? 'bg-[#081126] text-[#DCC8A8] shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                🪑 Tables List ({floorTables.length})
+                            </button>
+                            <button onClick={() => setListTab('areas')}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer
+                                    ${listTab === 'areas' ? 'bg-[#081126] text-[#DCC8A8] shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                🏛️ Areas List ({areas.length})
+                            </button>
+                        </div>
+                        <span className="text-[11px] text-slate-400 font-medium">
+                            {listTab === 'tables' ? `Showing tables in "${currentArea?.name}"` : 'All Dining Areas Overview'}
+                        </span>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                            <thead>
-                                <tr className="border-b border-slate-100">
-                                    {['Table', 'Seats', 'Status', 'Guest', 'Note', 'Actions'].map(h => (
-                                        <th key={h} className="px-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">{h}</th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {floorTables.map(t => (
-                                    <tr key={t.id} className="hover:bg-slate-50/60 transition">
-                                        <td className="px-4 py-2.5 font-bold text-slate-800 font-mono">{t.name}</td>
-                                        <td className="px-4 py-2.5 text-slate-600">{t.seats}</td>
-                                        <td className="px-4 py-2.5"><StatusBadge status={t.status} small /></td>
-                                        <td className="px-4 py-2.5 text-slate-600">{t.guest || <span className="text-slate-300">—</span>}</td>
-                                        <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">{t.note || '—'}</td>
-                                        <td className="px-4 py-2.5">
-                                            <div className="flex gap-1">
-                                                {isStaff && (
-                                                    <button onClick={() => { setSelectedTable(t); setStatusModal(t); }}
-                                                        className="px-2 py-1 bg-[#081126] text-[#DCC8A8] rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-800">Status</button>
-                                                )}
-                                                {isManager && (
-                                                    <>
-                                                        <button onClick={() => { setSelectedTable(t); setTableModal({...t}); }}
-                                                            className="px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-200">Edit</button>
-                                                        <button onClick={() => handleDeleteTable(t)}
-                                                            className="px-2 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-rose-100">Del</button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
+
+                    {listTab === 'tables' ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-100 bg-slate-50/30">
+                                        {['Table', 'Seats', 'Status', 'Guest', 'Note', 'Actions'].map(h => (
+                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">{h}</th>
+                                        ))}
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {floorTables.map(t => (
+                                        <tr key={t.id} className="hover:bg-slate-50/60 transition">
+                                            <td className="px-4 py-2.5 font-bold text-slate-800 font-mono">{t.name}</td>
+                                            <td className="px-4 py-2.5 text-slate-600">{t.seats}</td>
+                                            <td className="px-4 py-2.5"><StatusBadge status={t.status} small /></td>
+                                            <td className="px-4 py-2.5 text-slate-600">{t.guest || <span className="text-slate-300">—</span>}</td>
+                                            <td className="px-4 py-2.5 text-slate-400 max-w-[160px] truncate">{t.note || '—'}</td>
+                                            <td className="px-4 py-2.5">
+                                                <div className="flex gap-1">
+                                                    {isStaff && (
+                                                        <button onClick={() => { setSelectedTable(t); setStatusModal(t); }}
+                                                            className="px-2 py-1 bg-[#081126] text-[#DCC8A8] rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-800">Status</button>
+                                                    )}
+                                                    {isManager && (
+                                                        <>
+                                                            <button onClick={() => { setSelectedTable(t); setTableModal({...t}); }}
+                                                                className="px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-200">Edit</button>
+                                                            <button onClick={() => handleDeleteTable(t)}
+                                                                className="px-2 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-rose-100">Del</button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {floorTables.length === 0 && (
+                                        <tr>
+                                            <td colSpan={6} className="text-center py-8 text-slate-400 text-xs">No tables in this area.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="border-b border-slate-100 bg-slate-50/30">
+                                        {['Area Name', 'Description', 'Total Tables', 'Actions'].map(h => (
+                                            <th key={h} className="px-4 py-2.5 text-left text-[9px] font-bold uppercase tracking-wider text-slate-400">{h}</th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {areas.map(a => (
+                                        <tr key={a.id} className="hover:bg-slate-50/60 transition">
+                                            <td className="px-4 py-3 font-bold text-slate-800">
+                                                <span className="mr-2 text-sm">{a.icon || '🏛️'}</span>
+                                                {a.name}
+                                            </td>
+                                            <td className="px-4 py-3 text-slate-500">{a.description || <span className="text-slate-300">No description</span>}</td>
+                                            <td className="px-4 py-3">
+                                                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px]">
+                                                    {(areaTableMap[a.id] || []).length} tables
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {isManager && (
+                                                    <div className="flex gap-1">
+                                                        <button onClick={() => setAreaModal({...a})}
+                                                            className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-slate-200 transition">
+                                                            ✏ Edit
+                                                        </button>
+                                                        <button onClick={() => handleDeleteArea(a.id, a.name)}
+                                                            className="px-2.5 py-1 bg-rose-50 text-rose-600 border border-rose-200 rounded text-[10px] font-semibold cursor-pointer hover:bg-rose-100 transition">
+                                                            🗑 Delete
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -632,12 +781,6 @@ export default function TableLayout() {
                             onChange={e => typeof areaModal === 'string' ? setAreaForm({...areaForm, name:e.target.value}) : setAreaModal({...areaModal, name:e.target.value})} />
                         <InputField label="Description" value={typeof areaModal === 'string' ? areaForm.description : areaModal.description}
                             onChange={e => typeof areaModal === 'string' ? setAreaForm({...areaForm, description:e.target.value}) : setAreaModal({...areaModal, description:e.target.value})} />
-                        <div className="grid grid-cols-2 gap-2">
-                            <InputField label="Capacity" type="number" value={typeof areaModal === 'string' ? areaForm.capacity : areaModal.capacity}
-                                onChange={e => typeof areaModal === 'string' ? setAreaForm({...areaForm, capacity:+e.target.value}) : setAreaModal({...areaModal, capacity:+e.target.value})} />
-                            <InputField label="Icon" value={typeof areaModal === 'string' ? areaForm.icon : areaModal.icon}
-                                onChange={e => typeof areaModal === 'string' ? setAreaForm({...areaForm, icon:e.target.value}) : setAreaModal({...areaModal, icon:e.target.value})} />
-                        </div>
                         <button type="submit" className="w-full py-2 bg-[#081126] text-[#DCC8A8] text-[11px] font-semibold rounded-lg cursor-pointer hover:bg-slate-800">
                             {typeof areaModal === 'string' ? 'Create' : 'Save'}
                         </button>
