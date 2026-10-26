@@ -9,12 +9,12 @@ export const TABLE_STATUSES = {
 };
 
 export const STATUS_STYLES = {
-    Available:    { bg: 'bg-emerald-500',   border: 'border-emerald-400',  text: 'text-emerald-700',   light: 'bg-emerald-50',  dot: '🟢' },
-    Occupied:     { bg: 'bg-rose-500',      border: 'border-rose-400',     text: 'text-rose-700',      light: 'bg-rose-50',     dot: '🔴' },
-    Reserved:     { bg: 'bg-amber-500',     border: 'border-amber-400',    text: 'text-amber-700',     light: 'bg-amber-50',    dot: '🟡' },
-    Cleaning:     { bg: 'bg-sky-400',       border: 'border-sky-300',      text: 'text-sky-700',       light: 'bg-sky-50',      dot: '🔵' },
-    Merged:       { bg: 'bg-purple-500',    border: 'border-purple-400',   text: 'text-purple-700',    light: 'bg-purple-50',   dot: '🟣' },
-    Transferred:  { bg: 'bg-orange-400',    border: 'border-orange-300',   text: 'text-orange-700',    light: 'bg-orange-50',   dot: '🟠' },
+    Available:    { bg: 'bg-emerald-500',   border: 'border-emerald-400',  text: 'text-emerald-700',   light: 'bg-emerald-50',  dot: 'bg-emerald-500' },
+    Occupied:     { bg: 'bg-rose-500',      border: 'border-rose-400',     text: 'text-rose-700',      light: 'bg-rose-50',     dot: 'bg-rose-500' },
+    Reserved:     { bg: 'bg-amber-500',     border: 'border-amber-400',    text: 'text-amber-700',    light: 'bg-amber-50',    dot: 'bg-amber-500' },
+    Cleaning:     { bg: 'bg-sky-400',       border: 'border-sky-300',      text: 'text-sky-700',      light: 'bg-sky-50',      dot: 'bg-sky-400' },
+    Merged:       { bg: 'bg-purple-500',    border: 'border-purple-400',   text: 'text-purple-700',   light: 'bg-purple-50',   dot: 'bg-purple-500' },
+    Transferred:  { bg: 'bg-orange-400',    border: 'border-orange-300',   text: 'text-orange-700',   light: 'bg-orange-50',   dot: 'bg-orange-400' },
 };
 
 export const INITIAL_AREAS = [

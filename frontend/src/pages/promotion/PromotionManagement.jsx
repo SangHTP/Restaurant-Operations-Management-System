@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 
 const INITIAL_PROMOTIONS = [
     {
@@ -60,7 +61,7 @@ export default function PromotionManagement() {
         setPromotions(prev => prev.map(p => {
             if (p.id === id) {
                 const nextActive = !p.active;
-                showToast(`Promotion "${p.code}" is now ${nextActive ? 'ACTIVE ✅' : 'INACTIVE 🚫'}`);
+                showToast(`Promotion "${p.code}" is now ${nextActive ? 'ACTIVE' : 'INACTIVE'}`);
                 return { ...p, active: nextActive };
             }
             return p;
@@ -87,7 +88,7 @@ export default function PromotionManagement() {
             {/* TOAST */}
             {toast && (
                 <div className="fixed top-20 right-6 z-50 bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-                    <span className="font-black text-sm">✦</span>
+                    <IconGlyph glyph="✨" size={16} />
                     <span className="text-xs font-bold">{toast}</span>
                 </div>
             )}
@@ -124,7 +125,7 @@ export default function PromotionManagement() {
                         <div className="p-6 space-y-4">
                             <div className="flex justify-between items-start">
                                 <span className="font-mono text-xs font-black text-amber-900 bg-amber-100 px-3 py-1 rounded-xl border border-amber-300">
-                                    🎟️ {promo.code}
+                                    <IconGlyph glyph="🎟️" size={14} /> {promo.code}
                                 </span>
                                 <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg border ${
                                     promo.active ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-rose-100 text-rose-800 border-rose-300'
@@ -136,14 +137,14 @@ export default function PromotionManagement() {
                             <div>
                                 <h3 className="font-serif font-bold text-slate-900 text-lg">{promo.name}</h3>
                                 <p className="text-xs text-slate-500 mt-1">
-                                    Discount: <strong className="text-slate-800 font-mono">{promo.type === 'Percentage' ? `${promo.value}% OFF` : `${promo.value.toLocaleString('vi-VN')} đ OFF`}</strong>
+                                    Discount: <strong className="text-slate-800 font-mono">{promo.type === 'Percentage' ? `${promo.value}% OFF` : `${promo.value.toLocaleString('en-US')} VND OFF`}</strong>
                                 </p>
                             </div>
 
                             <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1 text-xs">
                                 <div className="flex justify-between text-slate-500">
                                     <span>Min Bill Amount:</span>
-                                    <span className="font-mono font-bold text-slate-800">{promo.minOrder.toLocaleString('vi-VN')} đ</span>
+                                    <span className="font-mono font-bold text-slate-800">{promo.minOrder.toLocaleString('en-US')} VND</span>
                                 </div>
                                 <div className="flex justify-between text-slate-500">
                                     <span>Valid Period:</span>
@@ -172,7 +173,7 @@ export default function PromotionManagement() {
                     <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
                         <div className="flex justify-between items-center pb-3 border-b border-stone-200">
                             <h3 className="font-serif font-bold text-lg text-[#081126]">New Promotion Campaign</h3>
-                            <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                            <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold"><IconGlyph glyph="✕" /></button>
                         </div>
 
                         <form onSubmit={handleCreatePromo} className="space-y-4 mt-4 text-xs">

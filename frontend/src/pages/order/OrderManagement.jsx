@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const INITIAL_ORDERS = [
     {
@@ -39,8 +41,14 @@ const INITIAL_ORDERS = [
     },
 ];
 
+const getOrderStatusLabel = (status) => ({
+    SentToKitchen: 'Sent to kitchen',
+    ReadyToServe: 'Ready to serve',
+}[status] || status);
+
 export default function OrderManagement() {
     const { currentUser } = useAuth();
+    const confirm = useConfirm();
     const [orders, setOrders] = useState(INITIAL_ORDERS);
     const [selectedOrder, setSelectedOrder] = useState(orders[0]);
     const [filterStatus, setFilterStatus] = useState('All');
@@ -57,10 +65,18 @@ export default function OrderManagement() {
         showToast(`Order ${orderId} sent to Kitchen KDS station!`);
     };
 
-    const handleUpdateStatus = (orderId, newStatus) => {
+    const handleUpdateStatus = async (orderId, newStatus) => {
+        if (newStatus === 'Cancelled') {
+            const shouldCancel = await confirm({
+                title: 'Cancel order?',
+                message: `Order ${orderId} will be marked as cancelled. Are you sure you want to continue?`,
+                confirmText: 'Cancel order',
+            });
+            if (!shouldCancel) return;
+        }
         setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: newStatus } : o));
         setSelectedOrder(prev => prev?.id === orderId ? { ...prev, status: newStatus } : prev);
-        showToast(`Order ${orderId} status → ${newStatus}`);
+        showToast(`Order ${orderId} status updated to ${getOrderStatusLabel(newStatus)}.`);
     };
 
     const handleToggleItemAvailability = (orderId, itemId) => {
@@ -124,7 +140,7 @@ export default function OrderManagement() {
                                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
                         }`}
                     >
-                        {st}
+                        {getOrderStatusLabel(st)}
                     </button>
                 ))}
             </div>
@@ -156,7 +172,7 @@ export default function OrderManagement() {
                                             order.status === 'ReadyToServe' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
                                             'bg-slate-100 text-slate-700 border-slate-200'
                                         }`}>
-                                            ● {order.status}
+                                            ● {getOrderStatusLabel(order.status)}
                                         </span>
                                     </div>
                                     <h3 className="font-serif font-bold text-slate-900 text-base mt-1">{order.table}</h3>
@@ -165,7 +181,7 @@ export default function OrderManagement() {
 
                                 <div className="text-right">
                                     <span className="text-base font-black text-[#081126] block">
-                                        {order.total.toLocaleString('vi-VN')} đ
+                                        {order.total.toLocaleString('en-US')} VND
                                     </span>
                                     <span className="text-[10px] text-slate-400">Time: {order.createdAt}</span>
                                 </div>
@@ -195,11 +211,11 @@ export default function OrderManagement() {
                                     }`}>
                                         <div>
                                             <span className="font-bold text-slate-900 block">{it.name} x{it.qty}</span>
-                                            {it.note && <span className="text-[10px] text-amber-700 block">📝 {it.note}</span>}
-                                            {!it.available && <span className="text-[10px] font-bold text-rose-600 block">⚠️ Dish Out of Stock</span>}
+                                            {it.note && <span className="text-[10px] text-amber-700 block"><IconGlyph glyph="📝" size={12} /> {it.note}</span>}
+                                            {!it.available && <span className="text-[10px] font-bold text-rose-600 block"><IconGlyph glyph="⚠️" size={12} /> Dish Out of Stock</span>}
                                         </div>
                                         <div className="text-right flex flex-col items-end gap-1">
-                                            <span className="font-mono font-bold text-slate-800">{(it.price * it.qty).toLocaleString('vi-VN')} đ</span>
+                                            <span className="font-mono font-bold text-slate-800">{(it.price * it.qty).toLocaleString('en-US')} VND</span>
                                             <button
                                                 onClick={() => handleToggleItemAvailability(selectedOrder.id, it.id)}
                                                 className="text-[9px] font-bold text-rose-700 bg-rose-100 hover:bg-rose-200 px-2 py-0.5 rounded cursor-pointer"
@@ -214,7 +230,7 @@ export default function OrderManagement() {
                             {/* TOTAL */}
                             <div className="bg-[#081126] text-white p-4 rounded-2xl flex justify-between items-center">
                                 <span className="text-xs font-bold text-[#DCC8A8] uppercase">Grand Total</span>
-                                <span className="text-xl font-black text-[#F5F2EA]">{selectedOrder.total.toLocaleString('vi-VN')} đ</span>
+                                <span className="text-xl font-black text-[#F5F2EA]">{selectedOrder.total.toLocaleString('en-US')} VND</span>
                             </div>
 
                             {/* ACTIONS */}
@@ -224,7 +240,7 @@ export default function OrderManagement() {
                                         onClick={() => handleSendToKitchen(selectedOrder.id)}
                                         className="w-full py-3 bg-gradient-to-r from-amber-600 to-amber-700 text-white font-extrabold text-xs uppercase rounded-xl hover:bg-amber-800 transition cursor-pointer shadow-md"
                                     >
-                                        🚀 Send Order to Kitchen
+                                        <IconGlyph glyph="🚀" size={15} /> Send Order to Kitchen
                                     </button>
                                 )}
                                 {selectedOrder.status === 'SentToKitchen' && (
@@ -232,7 +248,7 @@ export default function OrderManagement() {
                                         onClick={() => handleUpdateStatus(selectedOrder.id, 'ReadyToServe')}
                                         className="w-full py-3 bg-emerald-700 text-white font-extrabold text-xs uppercase rounded-xl hover:bg-emerald-800 transition cursor-pointer shadow-md"
                                     >
-                                        🔔 Mark Ready to Serve
+                                        <IconGlyph glyph="🔔" size={15} /> Mark Ready to Serve
                                     </button>
                                 )}
                                 <button
@@ -245,7 +261,7 @@ export default function OrderManagement() {
                         </div>
                     ) : (
                         <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-8 text-center text-slate-400">
-                            <span className="text-4xl block mb-2">🍽️</span>
+                            <IconGlyph glyph="🍽️" size={36} className="mb-2" />
                             <p className="font-serif font-bold text-slate-600 text-sm">Select an order</p>
                             <p className="text-xs mt-1">to view details & manage items</p>
                         </div>

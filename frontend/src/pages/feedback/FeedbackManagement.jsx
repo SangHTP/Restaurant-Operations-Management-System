@@ -1,4 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
+import { useAuth } from '../../context/AuthContext';
+import { useConfirm } from '../../context/ConfirmContext';
+import { reservationFeedbackApi } from '../../api/reservationFeedbackApi';
 
 const INITIAL_FEEDBACKS = [
     {
@@ -34,18 +38,52 @@ const INITIAL_FEEDBACKS = [
 ];
 
 export default function FeedbackManagement() {
+    const { currentUser } = useAuth();
+    const confirm = useConfirm();
     const [feedbacks, setFeedbacks] = useState(INITIAL_FEEDBACKS);
     const [selectedFb, setSelectedFb] = useState(null);
     const [replyText, setReplyText] = useState('');
     const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
+    const [editingFeedbackId, setEditingFeedbackId] = useState(null);
     const [toast, setToast] = useState('');
+    const [databaseError, setDatabaseError] = useState('');
 
     const [newReview, setNewReview] = useState({
-        customerName: '',
+        customerName: currentUser?.name || '',
         rating: 5,
         dishName: 'Wagyu A5 Ribeye Flambé',
         comment: '',
     });
+
+    useEffect(() => {
+        let isMounted = true;
+        reservationFeedbackApi.list()
+            .then(items => {
+                if (!isMounted) return;
+                const databaseFeedback = items.map(item => ({
+                    id: `RES-FB-${item.reservationFeedbackID}`,
+                    reservationFeedbackID: item.reservationFeedbackID,
+                    reservationID: item.reservationID,
+                    source: 'reservation',
+                    customerName: item.customerName,
+                    rating: item.rating,
+                    dishName: `Dining experience · ${[item.areaName, item.tableName].filter(Boolean).join(' · ') || `Reservation ${item.reservationID}`}`,
+                    comment: item.content || '',
+                    date: new Date(item.createdAt).toLocaleString('en-US'),
+                    reply: '',
+                    hidden: false,
+                }));
+                setFeedbacks(prev => [
+                    ...databaseFeedback,
+                    ...prev.filter(feedback => feedback.source !== 'reservation'),
+                ]);
+                setDatabaseError('');
+            })
+            .catch(error => {
+                if (isMounted) setDatabaseError(error.message || 'Could not load reviews from the database.');
+            });
+        return () => { isMounted = false; };
+    }, []);
 
     const showToast = (msg) => {
         setToast(msg);
@@ -66,7 +104,7 @@ export default function FeedbackManagement() {
         setFeedbacks(prev => prev.map(f => {
             if (f.id === id) {
                 const nextHidden = !f.hidden;
-                showToast(`Review ${id} is now ${nextHidden ? 'HIDDEN 🚫' : 'VISIBLE ✅'}`);
+                showToast(`Review ${id} is now ${nextHidden ? 'HIDDEN' : 'VISIBLE'}`);
                 return { ...f, hidden: nextHidden };
             }
             return f;
@@ -75,17 +113,55 @@ export default function FeedbackManagement() {
 
     const handleSubmitCustomerReview = (e) => {
         e.preventDefault();
+        if (editingFeedbackId) {
+            const updatedFeedback = {
+                ...selectedFb,
+                ...newReview,
+                rating: Number(newReview.rating),
+            };
+            setFeedbacks(prev => prev.map(f => f.id === editingFeedbackId ? updatedFeedback : f));
+            setSelectedFb(updatedFeedback);
+            setEditingFeedbackId(null);
+            setIsSubmitModalOpen(false);
+            showToast('Your feedback has been updated.');
+            return;
+        }
+
         const created = {
             id: `FB-${Date.now().toString().slice(-3)}`,
             ...newReview,
             rating: Number(newReview.rating),
-            date: new Date().toLocaleString(),
+            submittedBy: currentUser?.email || '',
+            date: new Date().toLocaleString('en-US'),
             reply: '',
             hidden: false,
         };
         setFeedbacks([created, ...feedbacks]);
         setIsSubmitModalOpen(false);
         showToast('Thank you! Your review has been submitted.');
+    };
+
+    const handleEditFeedback = (feedback) => {
+        setEditingFeedbackId(feedback.id);
+        setNewReview({
+            customerName: feedback.customerName,
+            rating: feedback.rating,
+            dishName: feedback.dishName,
+            comment: feedback.comment,
+        });
+        setIsSubmitModalOpen(true);
+    };
+
+    const handleDeleteFeedback = async (feedback) => {
+        const shouldDelete = await confirm({
+            title: 'Delete your feedback?',
+            message: 'This review will be permanently removed.',
+            confirmText: 'Delete feedback',
+        });
+        if (!shouldDelete) return;
+        setFeedbacks(prev => prev.filter(f => f.id !== feedback.id));
+        setSelectedFb(null);
+        showToast('Your feedback has been deleted.');
     };
 
     return (
@@ -114,11 +190,17 @@ export default function FeedbackManagement() {
                     </p>
                 </div>
 
+                {databaseError && (
+                    <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                        Could not load booking reviews from the database: {databaseError}
+                    </div>
+                )}
+
                 <button
                     onClick={() => setIsSubmitModalOpen(true)}
                     className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer"
                 >
-                    ⭐ Write a Review
+                    <IconGlyph glyph="⭐" size={15} /> Write a Review
                 </button>
             </div>
 
@@ -145,7 +227,7 @@ export default function FeedbackManagement() {
                                     <div>
                                         <div className="flex items-center gap-2">
                                             <h3 className="font-serif font-bold text-slate-900 text-base">{fb.customerName}</h3>
-                                            <span className="text-amber-500 font-bold text-xs">{'⭐'.repeat(fb.rating)}</span>
+                                            <span className="inline-flex items-center gap-0.5 whitespace-nowrap text-amber-500" aria-label={`${fb.rating} out of 5 stars`}>{Array.from({ length: fb.rating }, (_, index) => <IconGlyph key={index} glyph="⭐" size={12} />)}</span>
                                         </div>
                                         <span className="text-xs font-mono text-amber-900 font-bold">Dish: {fb.dishName}</span>
                                     </div>
@@ -175,7 +257,10 @@ export default function FeedbackManagement() {
                             <div className="border-b border-slate-100 pb-4">
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Feedback Detail</span>
                                 <h3 className="font-serif text-xl font-bold text-[#081126] mt-0.5">{selectedFb.customerName}</h3>
-                                <span className="text-amber-500 font-bold text-sm block mt-1">{'⭐'.repeat(selectedFb.rating)} ({selectedFb.rating}/5)</span>
+                                <div className="mt-1 flex items-center gap-1 text-sm font-bold text-amber-500">
+                                    <span className="inline-flex items-center gap-0.5" aria-label={`${selectedFb.rating} out of 5 stars`}>{Array.from({ length: selectedFb.rating }, (_, index) => <IconGlyph key={index} glyph="⭐" size={14} />)}</span>
+                                    <span>({selectedFb.rating}/5)</span>
+                                </div>
                             </div>
 
                             <div className="space-y-3 text-xs">
@@ -184,6 +269,31 @@ export default function FeedbackManagement() {
                                     <p className="text-slate-800 font-medium mt-1">&ldquo;{selectedFb.comment}&rdquo;</p>
                                 </div>
 
+                                {currentUser?.email && selectedFb.submittedBy === currentUser.email && (
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleEditFeedback(selectedFb)}
+                                            className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-xs font-bold uppercase text-slate-700 hover:bg-slate-50"
+                                        >
+                                            Edit Feedback
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDeleteFeedback(selectedFb)}
+                                            className="flex-1 rounded-xl border border-rose-200 bg-rose-50 py-2.5 text-xs font-bold uppercase text-rose-700 hover:bg-rose-100"
+                                        >
+                                            Delete Feedback
+                                        </button>
+                                    </div>
+                                )}
+
+                                {selectedFb.source === 'reservation' ? (
+                                    <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 text-xs leading-5 text-blue-800">
+                                        Saved from completed booking #{selectedFb.reservationID} in the database.
+                                    </div>
+                                ) : (
+                                    <>
                                 {/* STAFF REPLY FORM */}
                                 <form onSubmit={handleSendReply} className="space-y-2 pt-2 border-t border-slate-100">
                                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Management Reply</label>
@@ -211,11 +321,13 @@ export default function FeedbackManagement() {
                                 >
                                     {selectedFb.hidden ? 'Restore / Unhide Review' : 'Hide Inappropriate Review'}
                                 </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ) : (
                         <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-8 text-center text-slate-400">
-                            <span className="text-4xl block mb-2">⭐</span>
+                            <IconGlyph glyph="⭐" size={36} className="mb-2" />
                             <p className="font-serif font-bold text-slate-600 text-sm">Select a customer review</p>
                             <p className="text-xs mt-1">to reply or moderate</p>
                         </div>
@@ -229,7 +341,9 @@ export default function FeedbackManagement() {
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
                         <div className="flex justify-between items-center pb-3 border-b border-stone-200">
-                            <h3 className="font-serif font-bold text-lg text-[#081126]">Submit Customer Review</h3>
+                            <h3 className="font-serif font-bold text-lg text-[#081126]">
+                                {editingFeedbackId ? 'Update Your Feedback' : 'Submit Customer Review'}
+                            </h3>
                             <button onClick={() => setIsSubmitModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
                         </div>
 
@@ -254,11 +368,11 @@ export default function FeedbackManagement() {
                                         onChange={e => setNewReview({ ...newReview, rating: e.target.value })}
                                         className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold"
                                     >
-                                        <option value={5}>⭐⭐⭐⭐⭐ (5 Stars)</option>
-                                        <option value={4}>⭐⭐⭐⭐ (4 Stars)</option>
-                                        <option value={3}>⭐⭐⭐ (3 Stars)</option>
-                                        <option value={2}>⭐⭐ (2 Stars)</option>
-                                        <option value={1}>⭐ (1 Star)</option>
+                                        <option value={5}>5 Stars</option>
+                                        <option value={4}>4 Stars</option>
+                                        <option value={3}>3 Stars</option>
+                                        <option value={2}>2 Stars</option>
+                                        <option value={1}>1 Star</option>
                                     </select>
                                 </div>
                                 <div>
@@ -285,8 +399,19 @@ export default function FeedbackManagement() {
                             </div>
 
                             <div className="flex justify-end gap-2 pt-3">
-                                <button type="button" onClick={() => setIsSubmitModalOpen(false)} className="px-4 py-2 bg-slate-200 font-bold uppercase rounded-xl">Cancel</button>
-                                <button type="submit" className="px-5 py-2 bg-[#081126] text-[#DCC8A8] font-bold uppercase rounded-xl hover:bg-slate-800">Submit Feedback</button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setIsSubmitModalOpen(false);
+                                        setEditingFeedbackId(null);
+                                    }}
+                                    className="px-4 py-2 bg-slate-200 font-bold uppercase rounded-xl"
+                                >
+                                    Cancel
+                                </button>
+                                <button type="submit" className="px-5 py-2 bg-[#081126] text-[#DCC8A8] font-bold uppercase rounded-xl hover:bg-slate-800">
+                                    {editingFeedbackId ? 'Save Changes' : 'Submit Feedback'}
+                                </button>
                             </div>
                         </form>
                     </div>

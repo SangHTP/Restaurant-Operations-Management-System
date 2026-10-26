@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Eye, EyeOff, UserRound, X } from 'lucide-react';
 import logoApp from '../../assets/logo/logo.png';
 import { useAuth, MOCK_ACCOUNTS_DB } from '../../context/AuthContext';
+import IconGlyph from '../../components/common/IconGlyph';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -102,9 +104,7 @@ export default function Login() {
                             to="/"
                             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md text-[#fff8e7] text-xs font-bold tracking-wider transition-all duration-300 hover:border-[#DCC8A8]/60 group w-fit"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-[#DCC8A8] transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                            </svg>
+                            <ArrowLeft className="w-3.5 h-3.5 text-[#DCC8A8] transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                             <span className="group-hover:text-[#DCC8A8] transition-colors font-serif uppercase tracking-widest text-[10px]">
                                 Home
                             </span>
@@ -141,7 +141,7 @@ export default function Login() {
                         <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl border border-[#DCC8A8]/30 space-y-2.5">
                             <div className="flex items-center justify-between">
                                 <span className="text-[10px] font-black uppercase text-[#DCC8A8] tracking-widest flex items-center gap-1.5">
-                                    <span className="animate-pulse text-amber-400">⚡</span> Quick Demo Roles
+                                    <span className="animate-pulse text-amber-400"><IconGlyph glyph="⚡" size={16} /></span> Quick Demo Roles
                                 </span>
                                 <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">1-Click Auto Login</span>
                             </div>
@@ -159,11 +159,11 @@ export default function Login() {
                                             'bg-yellow-950/80 text-yellow-300 border-yellow-500/40 hover:bg-yellow-900'
                                         }`}
                                     >
-                                        {acc.role === 'Customer' && '👤 Customer'}
-                                        {acc.role === 'Staff' && '👨‍💼 Staff (POS)'}
-                                        {acc.role === 'Kitchen' && '🍳 Kitchen'}
-                                        {acc.role === 'Manager' && '📊 Manager'}
-                                        {acc.role === 'Owner' && '👑 Owner'}
+                                        {acc.role === 'Customer' && <><IconGlyph glyph="👤" size={15} /> Customer</>}
+                                        {acc.role === 'Staff' && <><IconGlyph glyph="👨‍💼" size={15} /> Staff (POS)</>}
+                                        {acc.role === 'Kitchen' && <><IconGlyph glyph="🍳" size={15} /> Kitchen</>}
+                                        {acc.role === 'Manager' && <><IconGlyph glyph="📊" size={15} /> Manager</>}
+                                        {acc.role === 'Owner' && <><IconGlyph glyph="👑" size={15} /> Owner</>}
                                     </button>
                                 ))}
                             </div>
@@ -221,14 +221,9 @@ export default function Login() {
                                         title={showPassword ? "Hide password" : "Show password"}
                                     >
                                         {showPassword ? (
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                            </svg>
+                                            <EyeOff className="w-4 h-4" aria-hidden="true" />
                                         ) : (
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
+                                            <Eye className="w-4 h-4" aria-hidden="true" />
                                         )}
                                     </button>
                                 </div>
@@ -286,56 +281,70 @@ export default function Login() {
 
             {/* GOOGLE OAUTH ACCOUNT CHOOSER MODAL */}
             {isGoogleModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 animate-fadeIn">
-                        
-                        {/* Header */}
-                        <div className="text-center pb-4 border-b border-stone-100">
-                            <svg className="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                            </svg>
-                            <h3 className="font-sans font-extrabold text-base text-slate-800">
-                                Choose an account
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                to continue to <span className="font-bold text-[#081126]">Lumière Restaurant</span>
-                            </p>
+                <div className="fixed inset-0 z-50 bg-[#081126]/65 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-xl w-full max-h-[calc(100vh-2rem)] p-5 sm:p-8 shadow-2xl border border-white/70 animate-fadeIn overflow-y-auto">
+                        <div className="flex items-start justify-between gap-4 pb-6 border-b border-slate-200">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                                    <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="font-sans font-bold text-xl text-slate-900">
+                                        Choose an account
+                                    </h3>
+                                    <p className="text-sm text-slate-500 mt-1">
+                                        Continue to <span className="font-semibold text-[#081126]">Lumière Restaurant</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsGoogleModalOpen(false)}
+                                className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition"
+                                aria-label="Close account chooser"
+                            >
+                                <X size={18} aria-hidden="true" />
+                            </button>
                         </div>
 
-                        {/* Account List */}
-                        <div className="py-3 divide-y divide-slate-100">
+                        <div className="py-5 space-y-3">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                                Available demo accounts
+                            </p>
                             {GOOGLE_ACCOUNTS.map((acc) => (
                                 <button
                                     key={acc.email}
                                     onClick={() => handleSelectGoogleAccount(acc.email)}
                                     disabled={googleLoadingEmail !== ''}
-                                    className="w-full text-left p-3 hover:bg-slate-50 rounded-2xl flex items-center justify-between transition cursor-pointer group"
+                                    className="w-full min-w-0 text-left p-3 sm:p-4 border border-slate-200 hover:border-[#DCC8A8] hover:bg-amber-50/40 rounded-2xl flex items-center gap-3 sm:gap-4 transition cursor-pointer group disabled:opacity-60 disabled:cursor-wait"
                                 >
-                                    <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <img
                                             src={acc.avatar}
                                             alt={acc.name}
-                                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
+                                            className="w-11 h-11 rounded-full object-cover border border-slate-200 shrink-0"
                                         />
-                                        <div>
-                                            <div className="text-xs font-bold text-slate-800 group-hover:text-[#081126]">
+                                        <div className="min-w-0">
+                                            <div className="text-sm font-semibold text-slate-800 group-hover:text-[#081126]">
                                                 {acc.name}
                                             </div>
-                                            <div className="text-[11px] text-slate-400 font-mono">
+                                            <div className="text-xs text-slate-500 mt-0.5 break-all">
                                                 {acc.email}
                                             </div>
                                         </div>
                                     </div>
 
                                     {googleLoadingEmail === acc.email ? (
-                                        <span className="text-[10px] font-bold text-amber-700 animate-pulse">
+                                        <span className="text-xs font-semibold text-amber-700 animate-pulse shrink-0">
                                             Signing in...
                                         </span>
                                     ) : (
-                                        <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
+                                        <span className="text-[11px] font-semibold bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full border border-slate-200 shrink-0">
                                             {acc.badge}
                                         </span>
                                     )}
@@ -343,23 +352,21 @@ export default function Login() {
                             ))}
                         </div>
 
-                        {/* Additional Options */}
-                        <div className="pt-2 border-t border-slate-100 space-y-2">
+                        <div className="pt-4 border-t border-slate-200">
                             <button
                                 onClick={() => handleSelectGoogleAccount('havanon@fpt.edu.vn')}
-                                className="w-full text-left p-2.5 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-3 cursor-pointer"
+                                className="w-full text-left p-3 hover:bg-slate-50 rounded-xl text-sm font-semibold text-slate-600 flex items-center gap-3 cursor-pointer transition"
                             >
-                                <span className="w-8 text-center text-slate-400">👤</span>
+                                <UserRound size={18} className="text-slate-400" aria-hidden="true" />
                                 <span>Use another account</span>
                             </button>
                         </div>
 
-                        {/* Footer & Cancel */}
-                        <div className="mt-4 pt-3 text-center border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
-                            <span>Google Auth Simulator</span>
+                        <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 text-xs text-slate-400">
+                            <span>Demo sign-in preview</span>
                             <button
                                 onClick={() => setIsGoogleModalOpen(false)}
-                                className="font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
+                                className="sm:ml-auto px-4 py-2 rounded-lg font-semibold text-slate-600 hover:bg-slate-100 hover:text-slate-900 cursor-pointer transition"
                             >
                                 Cancel
                             </button>

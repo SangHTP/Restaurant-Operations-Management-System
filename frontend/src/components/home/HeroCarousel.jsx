@@ -1,33 +1,35 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, ChevronLeft, ChevronRight, Sparkles, Star } from 'lucide-react';
+import { bannerApi } from '../../api/contentApi';
 
 const SLIDES = [
     {
         id: 'galaxy-glass',
-        badge: '✦ DÙNG BỮA ĐÊM NGÂN HÀ ✦',
+        badge: 'GALACTIC DINING',
         subtitle: 'LUMIÈRE LUXURY DINING EXPERIENCE',
-        title: 'Thưởng Thức Ẩm Thực Không Gian Kính Mờ Vũ Trụ',
-        description: 'Trải nghiệm phong cách ẩm thực đỉnh cao với thực đơn 5 sao, cocktail sáng tạo và ưu đãi đặc quyền giảm đến 50% khi đặt bàn trước.',
-        primaryBtnText: 'Khám phá Menu & Đặt bàn',
+        title: 'A Cosmic Fine-Dining Experience',
+        description: 'Discover five-star cuisine, inventive cocktails, and exclusive savings of up to 50% when you reserve in advance.',
+        primaryBtnText: 'Explore the Menu & Reserve',
         primaryBtnLink: '/menu',
-        secondaryBtnText: 'Xem Sơ Đồ Đặt Bàn',
+        secondaryBtnText: 'View the Seating Plan',
         secondaryBtnLink: '/restaurant-layout',
         bgImage: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=2000&q=85',
         // Split screen image shown on the right panel
         splitImage: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=1200&q=85',
         accentColor: '#DCC8A8',
         tag: 'HOT DEAL',
-        stat1: '5★ Rating', stat2: '10+ Years', stat3: '200+ Tables',
+        stat1: '5 Rating', stat2: '10+ Years', stat3: '200+ Tables',
     },
     {
         id: 'signature-gourmet',
-        badge: '✦ TINH HOA BẮT MẮT ✦',
+        badge: 'SIGNATURE FAVORITES',
         subtitle: 'FINE DINING & SEAFOOD GOURMET',
-        title: 'Tuyệt Tác Hải Sản Thượng Hạng & Bò Mỹ Sốt BBQ',
-        description: 'Mỗi món ăn là một tác phẩm nghệ thuật chế biến bởi đầu bếp 5 sao, mang lại dư vị đậm đà ngất ngây trong từng giác quan.',
-        primaryBtnText: 'Thưởng thức ngay',
+        title: 'Premium Seafood & American BBQ',
+        description: 'Every dish is a work of art, crafted by our five-star chefs to delight the senses with bold, unforgettable flavors.',
+        primaryBtnText: 'Enjoy Now',
         primaryBtnLink: '/menu',
-        secondaryBtnText: 'Xem danh mục món',
+        secondaryBtnText: 'Browse Dishes',
         secondaryBtnLink: '/menu',
         bgImage: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=2000&q=85',
         splitImage: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=1200&q=85',
@@ -37,14 +39,14 @@ const SLIDES = [
     },
     {
         id: 'starlight-party',
-        badge: '✦ TIỆC SỰ KIỆN & PRIVATE DINING ✦',
+        badge: 'EVENTS & PRIVATE DINING',
         subtitle: 'VIP STARLIGHT LOUNGE',
-        title: 'Tổ Chức Sinh Nhật & Tiệc Kỷ Niệm Sang Trọng',
-        description: 'Gói trang trí ánh sáng LED Galaxy độc quyền, tặng bánh kem Starlight cao cấp & không gian riêng tư đẳng cấp cho nhóm từ 6 khách.',
-        primaryBtnText: 'Đặt tiệc ngay',
+        title: 'Celebrate Birthdays & Anniversaries in Style',
+        description: 'Enjoy exclusive Galaxy LED décor, a premium Starlight cake, and an elegant private space for groups of six or more.',
+        primaryBtnText: 'Plan Your Event',
         primaryBtnLink: '/restaurant-layout',
-        secondaryBtnText: 'Tư vấn sự kiện',
-        secondaryBtnLink: '/restaurant-info',
+        secondaryBtnText: 'Ask About Events',
+        secondaryBtnLink: '/news',
         bgImage: 'https://images.unsplash.com/photo-1530103862676-de8c9debad1d?auto=format&fit=crop&w=2000&q=85',
         splitImage: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1200&q=85',
         accentColor: '#F472B6',
@@ -53,11 +55,11 @@ const SLIDES = [
     },
     {
         id: 'cocktail-bar',
-        badge: '✦ COCKTAIL & NIGHT BAR ✦',
+        badge: 'COCKTAIL & NIGHT BAR',
         subtitle: 'STARLIGHT MIXOLOGY',
-        title: 'Cocktail Starlight & Âm Nhạc Đêm Ngân Hà',
-        description: 'Thư giãn trong không gian quầy bar lung linh, thưởng thức những ly cocktail được pha chế độc bản theo phong cách Galaxy.',
-        primaryBtnText: 'Xem Menu Đồ Uống',
+        title: 'Starlight Cocktails & Galactic Nights',
+        description: 'Unwind in our dazzling bar and enjoy one-of-a-kind cocktails inspired by the galaxy.',
+        primaryBtnText: 'View the Drinks Menu',
         primaryBtnLink: '/menu',
         secondaryBtnText: null,
         bgImage: 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=2000&q=85',
@@ -68,22 +70,24 @@ const SLIDES = [
     },
     {
         id: 'buffet-bbq',
-        badge: '✦ BUFFET LẨU NƯỚNG ĐÊM ✦',
-        subtitle: 'NEBULA DEALS - ĐI 4 TÍNH 3',
-        title: 'Đại Tiệc Lẩu Nướng BBQ Không Giới Hạn',
-        description: 'Thỏa thích thưởng thức hơn 60 món lẩu nướng đa dạng, tặng kèm Mocktail Ngân Hà không giới hạn cho bàn đi từ 4 người.',
-        primaryBtnText: 'Nhận Ưu Đãi 4 Tính 3',
+        badge: 'MIDNIGHT HOTPOT & BBQ BUFFET',
+        subtitle: 'NEBULA DEALS — DINE 4, PAY FOR 3',
+        title: 'An Unlimited Hotpot & BBQ Feast',
+        description: 'Enjoy more than 60 hotpot and BBQ favorites, plus unlimited Galaxy mocktails for groups of four or more.',
+        primaryBtnText: 'Claim the Dine 4, Pay for 3 Deal',
         primaryBtnLink: '/menu',
         secondaryBtnText: null,
         bgImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=2000&q=85',
         splitImage: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?auto=format&fit=crop&w=1200&q=85',
         accentColor: '#F59E0B',
         tag: 'SPECIAL PROMO',
-        stat1: '60+ Dishes', stat2: 'Mocktail Free', stat3: '4 Tính 3',
+        stat1: '60+ Dishes', stat2: 'Free Mocktails', stat3: 'Dine 4, Pay for 3',
     }
 ];
 
 export default function HeroCarousel() {
+    const [managedSlides, setManagedSlides] = useState(null);
+    const [bannerLoadError, setBannerLoadError] = useState('');
     const [currentIndex, setCurrentIndex] = useState(0);
     const [prevIndex, setPrevIndex] = useState(null);
     const [isHovered, setIsHovered] = useState(false);
@@ -92,6 +96,46 @@ export default function HeroCarousel() {
     const [mouseX, setMouseX] = useState(0);
     const [isTransitioning, setIsTransitioning] = useState(false);
     const containerRef = useRef(null);
+
+    const slides = managedSlides?.length
+        ? managedSlides.map((banner) => ({
+            id: `banner-${banner.bannerID}`,
+            isManaged: true,
+            badge: 'BANNER',
+            subtitle: banner.subtitle || '',
+            title: banner.title,
+            description: banner.subtitle || '',
+            primaryBtnText: 'Discover More',
+            primaryBtnLink: banner.linkUrl,
+            bgImage: banner.imageUrl,
+            splitImage: banner.imageUrl,
+            accentColor: '#DCC8A8',
+            tag: 'LUMIÈRE',
+        }))
+        : SLIDES;
+
+    useEffect(() => {
+        let isMounted = true;
+        bannerApi.list({ isActive: true })
+            .then((banners) => {
+                if (isMounted) {
+                    setManagedSlides(banners);
+                    setBannerLoadError('');
+                }
+            })
+            .catch((error) => {
+                if (isMounted) setBannerLoadError(`Unable to load banners from the server: ${error.message}`);
+            });
+
+        return () => {
+            isMounted = false;
+        };
+    }, []);
+
+    useEffect(() => {
+        setCurrentIndex((index) => Math.min(index, slides.length - 1));
+        setPrevIndex(null);
+    }, [slides.length]);
 
     const changeSlide = useCallback((newIndex) => {
         if (isTransitioning) return;
@@ -106,12 +150,12 @@ export default function HeroCarousel() {
     }, [currentIndex, isTransitioning]);
 
     const nextSlide = useCallback(() => {
-        changeSlide((currentIndex + 1) % SLIDES.length);
-    }, [currentIndex, changeSlide]);
+        changeSlide((currentIndex + 1) % slides.length);
+    }, [currentIndex, changeSlide, slides.length]);
 
     const prevSlide = useCallback(() => {
-        changeSlide(currentIndex === 0 ? SLIDES.length - 1 : currentIndex - 1);
-    }, [currentIndex, changeSlide]);
+        changeSlide(currentIndex === 0 ? slides.length - 1 : currentIndex - 1);
+    }, [currentIndex, changeSlide, slides.length]);
 
     const goToSlide = (index) => {
         if (index !== currentIndex) changeSlide(index);
@@ -158,8 +202,20 @@ export default function HeroCarousel() {
         setMouseX(x);
     };
 
-    const slide = SLIDES[currentIndex];
-    const prevSlideData = prevIndex !== null ? SLIDES[prevIndex] : null;
+    const slide = slides[currentIndex] || SLIDES[0];
+    const prevSlideData = prevIndex !== null ? slides[prevIndex] : null;
+    const primaryButtonClass = 'px-8 py-4 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-3 cursor-pointer';
+    const primaryButtonStyle = {
+        background: `linear-gradient(135deg, ${slide.accentColor}, #ebd9bd, ${slide.accentColor})`,
+        color: '#081126',
+        border: `1px solid ${slide.accentColor}80`,
+    };
+    const primaryButtonContent = (
+        <>
+            <span>{slide.primaryBtnText}</span>
+            <ArrowRight size={18} strokeWidth={2.5} aria-hidden="true" />
+        </>
+    );
 
     return (
         <div
@@ -277,25 +333,26 @@ export default function HeroCarousel() {
                 {/* ── LEFT PANEL: Background + Parallax + Ken Burns ── */}
                 <div className={`split-left-in absolute inset-0`} style={{ width: '62%' }}>
                     <div className="absolute inset-0 overflow-hidden">
-                        <img
-                            src={slide.bgImage}
-                            alt={slide.title}
-                            className={`absolute w-[115%] h-[115%] object-cover object-center ${
-                                currentIndex % 5 === 0 ? 'kb-zoom-right' :
-                                currentIndex % 5 === 1 ? 'kb-zoom-left' :
-                                currentIndex % 5 === 2 ? 'kb-zoom-out' :
-                                currentIndex % 5 === 3 ? 'kb-pan' : 'kb-pan-right'
-                            }`}
-                            style={{
-                                top: '-7.5%',
-                                left: '-7.5%',
-                                transformOrigin: 'center center',
-                                // Parallax scroll + subtle mouse tilt
-                                marginTop: `${parallaxY}px`,
-                                marginLeft: `${mouseX * 18}px`,
-                                transition: 'margin 0.1s linear',
-                            }}
-                        />
+                        {slide.bgImage && (
+                            <img
+                                src={slide.bgImage}
+                                alt={slide.title}
+                                className={`absolute w-[115%] h-[115%] object-cover object-center ${
+                                    currentIndex % 5 === 0 ? 'kb-zoom-right' :
+                                    currentIndex % 5 === 1 ? 'kb-zoom-left' :
+                                    currentIndex % 5 === 2 ? 'kb-zoom-out' :
+                                    currentIndex % 5 === 3 ? 'kb-pan' : 'kb-pan-right'
+                                }`}
+                                style={{
+                                    top: '-7.5%',
+                                    left: '-7.5%',
+                                    transformOrigin: 'center center',
+                                    marginTop: `${parallaxY}px`,
+                                    marginLeft: `${mouseX * 18}px`,
+                                    transition: 'margin 0.1s linear',
+                                }}
+                            />
+                        )}
                         {/* Gradient overlays */}
                         <div className="absolute inset-0 bg-gradient-to-r from-[#081126] via-[#081126]/80 to-transparent" />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#081126]/90 via-transparent to-black/30" />
@@ -310,21 +367,22 @@ export default function HeroCarousel() {
                 {/* ── RIGHT PANEL: Split Image + Ken Burns ── */}
                 <div className="split-right-in absolute inset-0" style={{ left: '62%' }}>
                     <div className="absolute inset-0 overflow-hidden">
-                        <img
-                            src={slide.splitImage}
-                            alt=""
-                            className={`absolute w-[120%] h-[120%] object-cover object-center ${
-                                currentIndex % 2 === 0 ? 'kb-pan' : 'kb-pan-right'
-                            }`}
-                            style={{
-                                top: '-10%',
-                                left: '-10%',
-                                // Opposite parallax direction for depth effect
-                                marginTop: `${parallaxY * 0.5}px`,
-                                marginLeft: `${-mouseX * 12}px`,
-                                transition: 'margin 0.1s linear',
-                            }}
-                        />
+                        {slide.splitImage && (
+                            <img
+                                src={slide.splitImage}
+                                alt=""
+                                className={`absolute w-[120%] h-[120%] object-cover object-center ${
+                                    currentIndex % 2 === 0 ? 'kb-pan' : 'kb-pan-right'
+                                }`}
+                                style={{
+                                    top: '-10%',
+                                    left: '-10%',
+                                    marginTop: `${parallaxY * 0.5}px`,
+                                    marginLeft: `${-mouseX * 12}px`,
+                                    transition: 'margin 0.1s linear',
+                                }}
+                            />
+                        )}
                         {/* Beautiful left edge blend to main panel */}
                         <div className="absolute inset-0 bg-gradient-to-r from-[#081126] via-[#081126]/20 to-[#081126]/50" />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#081126]/70 via-transparent to-black/30" />
@@ -397,18 +455,15 @@ export default function HeroCarousel() {
                         className="flex flex-wrap items-center gap-4 mb-8 opacity-0 text-rise"
                         style={{ animationDelay: '510ms' }}
                     >
-                        <Link
-                            to={slide.primaryBtnLink}
-                            className="px-8 py-4 font-black text-xs sm:text-sm uppercase tracking-wider rounded-2xl shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-3 cursor-pointer"
-                            style={{
-                                background: `linear-gradient(135deg, ${slide.accentColor}, #ebd9bd, ${slide.accentColor})`,
-                                color: '#081126',
-                                border: `1px solid ${slide.accentColor}80`,
-                            }}
-                        >
-                            <span>{slide.primaryBtnText}</span>
-                            <span className="text-lg font-black">→</span>
-                        </Link>
+                        {slide.primaryBtnLink && (slide.isManaged && /^https?:\/\//i.test(slide.primaryBtnLink) ? (
+                            <a href={slide.primaryBtnLink} target="_blank" rel="noreferrer" className={primaryButtonClass} style={primaryButtonStyle}>
+                                {primaryButtonContent}
+                            </a>
+                        ) : (
+                            <Link to={slide.primaryBtnLink} className={primaryButtonClass} style={primaryButtonStyle}>
+                                {primaryButtonContent}
+                            </Link>
+                        ))}
 
                         {slide.secondaryBtnText && (
                             <Link
@@ -434,6 +489,7 @@ export default function HeroCarousel() {
                                     className="text-xs font-bold uppercase tracking-wider"
                                     style={{ color: slide.accentColor }}
                                 >
+                                    {stat === '5 Rating' && <Star size={13} aria-hidden="true" />}
                                     {stat}
                                 </span>
                             </div>
@@ -446,12 +502,13 @@ export default function HeroCarousel() {
                     className="absolute z-50 top-10 right-10 text-right opacity-0 text-rise"
                     style={{ animationDelay: '700ms' }}
                 >
-                    <div
-                        className="text-[10px] font-black uppercase tracking-[0.3em] mb-1"
-                        style={{ color: slide.accentColor }}
-                    >
-                        {slide.badge}
-                    </div>
+                    {slide.badge && (
+                        <div className="mb-1 flex items-center justify-end gap-2 text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: slide.accentColor }}>
+                            {!slide.isManaged && <Sparkles size={13} aria-hidden="true" />}
+                            {slide.badge}
+                            {!slide.isManaged && <Sparkles size={13} aria-hidden="true" />}
+                        </div>
+                    )}
                     <div className="text-[11px] text-white/50 font-mono">
                         Est. Lumière 2023
                     </div>
@@ -464,9 +521,7 @@ export default function HeroCarousel() {
                 aria-label="Previous Slide"
                 className="absolute left-5 sm:left-8 top-1/2 -translate-y-1/2 z-[60] w-12 h-12 rounded-2xl bg-[#081126]/80 hover:bg-[#DCC8A8] border border-[#DCC8A8]/40 text-[#DCC8A8] hover:text-[#081126] flex items-center justify-center backdrop-blur-md transition-all duration-300 opacity-70 hover:opacity-100 hover:scale-110 cursor-pointer shadow-2xl"
             >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                </svg>
+                <ChevronLeft className="h-5 w-5" aria-hidden="true" />
             </button>
 
             <button
@@ -474,19 +529,17 @@ export default function HeroCarousel() {
                 aria-label="Next Slide"
                 className="absolute right-5 sm:right-8 top-1/2 -translate-y-1/2 z-[60] w-12 h-12 rounded-2xl bg-[#081126]/80 hover:bg-[#DCC8A8] border border-[#DCC8A8]/40 text-[#DCC8A8] hover:text-[#081126] flex items-center justify-center backdrop-blur-md transition-all duration-300 opacity-70 hover:opacity-100 hover:scale-110 cursor-pointer shadow-2xl"
             >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+                <ChevronRight className="h-5 w-5" aria-hidden="true" />
             </button>
 
             {/* ── SLIDE INDICATORS ────────────────────────────── */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-4 bg-[#081126]/70 px-5 py-2.5 rounded-2xl backdrop-blur-md border border-[#DCC8A8]/25">
                 <span className="font-mono text-xs font-bold text-[#DCC8A8]">
-                    0{currentIndex + 1} <span className="text-white/30">/</span> 0{SLIDES.length}
+                    0{currentIndex + 1} <span className="text-white/30">/</span> 0{slides.length}
                 </span>
 
                 <div className="flex items-center gap-1.5">
-                    {SLIDES.map((s, idx) => (
+                    {slides.map((s, idx) => (
                         <button
                             key={s.id}
                             onClick={() => goToSlide(idx)}
@@ -512,6 +565,12 @@ export default function HeroCarousel() {
                     }}
                 />
             </div>
+
+            {bannerLoadError && (
+                <p role="status" className="absolute bottom-14 right-4 z-[60] rounded-lg bg-black/70 px-3 py-2 text-xs text-amber-100">
+                    {bannerLoadError}
+                </p>
+            )}
         </div>
     );
 }

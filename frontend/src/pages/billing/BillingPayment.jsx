@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
+import IconGlyph from '../../components/common/IconGlyph';
 
 const INITIAL_BILLS = [
     {
@@ -44,6 +46,45 @@ export default function BillingPayment() {
     const [appliedDiscount, setAppliedDiscount] = useState(selectedBill?.discount || 0);
     const [toast, setToast] = useState('');
     const [showReceiptModal, setShowReceiptModal] = useState(false);
+    const [paymentQrCode, setPaymentQrCode] = useState('');
+    const [paymentQrError, setPaymentQrError] = useState('');
+
+    const payableTotal = selectedBill
+        ? selectedBill.subtotal - appliedDiscount + Math.round((selectedBill.subtotal - appliedDiscount) * 0.1)
+        : 0;
+
+    useEffect(() => {
+        if (paymentMethod !== 'QR Code' || !selectedBill || selectedBill.status !== 'Unpaid') {
+            setPaymentQrCode('');
+            setPaymentQrError('');
+            return;
+        }
+
+        let isCurrent = true;
+        const paymentInfo = JSON.stringify({
+            merchant: 'Lumiere Restaurant (Demo)',
+            invoice: selectedBill.id,
+            amountVnd: payableTotal,
+        });
+        QRCode.toDataURL(paymentInfo, {
+            errorCorrectionLevel: 'M',
+            margin: 2,
+            width: 240,
+            color: { dark: '#081126', light: '#FFFFFF' },
+        }).then((dataUrl) => {
+            if (!isCurrent) return;
+            setPaymentQrCode(dataUrl);
+            setPaymentQrError('');
+        }).catch((error) => {
+            if (!isCurrent) return;
+            setPaymentQrCode('');
+            setPaymentQrError(`Could not generate payment QR code: ${error.message}`);
+        });
+
+        return () => {
+            isCurrent = false;
+        };
+    }, [paymentMethod, selectedBill, payableTotal]);
 
     const showToast = (msg) => {
         setToast(msg);
@@ -62,7 +103,7 @@ export default function BillingPayment() {
 
     const handleProcessPayment = (e) => {
         e.preventDefault();
-        const updatedTotal = selectedBill.subtotal - appliedDiscount + Math.round((selectedBill.subtotal - appliedDiscount) * 0.1);
+        const updatedTotal = payableTotal;
         
         setBills(prev => prev.map(b => b.id === selectedBill.id ? {
             ...b,
@@ -80,10 +121,10 @@ export default function BillingPayment() {
             total: updatedTotal,
         }));
 
-        showToast(`Payment of ${updatedTotal.toLocaleString('vi-VN')} đ confirmed via ${paymentMethod}!`);
+        showToast(`Payment of ${updatedTotal.toLocaleString('en-US')} VND confirmed via ${paymentMethod}!`);
     };
 
-    const calculatedChange = Math.max(0, Number(cashGiven) - (selectedBill ? selectedBill.total : 0));
+    const calculatedChange = Math.max(0, Number(cashGiven) - payableTotal);
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8 font-sans space-y-8">
@@ -146,7 +187,7 @@ export default function BillingPayment() {
 
                                 <div className="text-right">
                                     <span className="text-base font-black text-[#081126] block">
-                                        {bill.total.toLocaleString('vi-VN')} đ
+                                        {bill.total.toLocaleString('en-US')} VND
                                     </span>
                                     <span className="text-[10px] text-slate-400 uppercase font-bold">Method: {bill.paymentMethod}</span>
                                 </div>
@@ -169,7 +210,7 @@ export default function BillingPayment() {
                                     onClick={() => setShowReceiptModal(true)}
                                     className="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 cursor-pointer"
                                 >
-                                    🖨️ Receipt
+                                    <IconGlyph glyph="🖨️" size={15} /> Receipt
                                 </button>
                             </div>
 
@@ -179,7 +220,7 @@ export default function BillingPayment() {
                                 {selectedBill.items.map((it, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-slate-700">
                                         <span>{it.name} x{it.qty}</span>
-                                        <span className="font-mono font-bold">{(it.price * it.qty).toLocaleString('vi-VN')} đ</span>
+                                        <span className="font-mono font-bold">{(it.price * it.qty).toLocaleString('en-US')} VND</span>
                                     </div>
                                 ))}
                             </div>
@@ -208,21 +249,21 @@ export default function BillingPayment() {
                             <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2 text-xs">
                                 <div className="flex justify-between text-slate-600">
                                     <span>Subtotal</span>
-                                    <span className="font-mono font-bold">{selectedBill.subtotal.toLocaleString('vi-VN')} đ</span>
+                                    <span className="font-mono font-bold">{selectedBill.subtotal.toLocaleString('en-US')} VND</span>
                                 </div>
                                 {appliedDiscount > 0 && (
                                     <div className="flex justify-between text-emerald-700 font-bold">
                                         <span>Discount</span>
-                                        <span className="font-mono">-{appliedDiscount.toLocaleString('vi-VN')} đ</span>
+                                        <span className="font-mono">-{appliedDiscount.toLocaleString('en-US')} VND</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between text-slate-600">
                                     <span>VAT (10%)</span>
-                                    <span className="font-mono font-bold">{selectedBill.vat.toLocaleString('vi-VN')} đ</span>
+                                    <span className="font-mono font-bold">{selectedBill.vat.toLocaleString('en-US')} VND</span>
                                 </div>
                                 <div className="flex justify-between text-base font-black text-[#081126] pt-2 border-t border-slate-200">
                                     <span>Grand Total</span>
-                                    <span>{(selectedBill.subtotal - appliedDiscount + selectedBill.vat).toLocaleString('vi-VN')} đ</span>
+                                    <span>{payableTotal.toLocaleString('en-US')} VND</span>
                                 </div>
                             </div>
 
@@ -243,14 +284,32 @@ export default function BillingPayment() {
                                                             : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
                                                     }`}
                                                 >
-                                                    {m === 'Cash' && '💵 Cash'}
-                                                    {m === 'QR Code' && '📱 QR Code'}
-                                                    {m === 'VNPay' && '💳 VNPay'}
-                                                    {m === 'MoMo' && '🟣 MoMo'}
+                                                    {m === 'Cash' && <><IconGlyph glyph="💵" size={15} /> Cash</>}
+                                                    {m === 'QR Code' && <><IconGlyph glyph="📱" size={15} /> QR Code</>}
+                                                    {m === 'VNPay' && <><IconGlyph glyph="💳" size={15} /> VNPay</>}
+                                                    {m === 'MoMo' && <><IconGlyph glyph="💳" size={15} /> MoMo</>}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
+
+                                    {paymentMethod === 'QR Code' && (
+                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
+                                            {paymentQrCode ? (
+                                                <img
+                                                    src={paymentQrCode}
+                                                    alt={`Demo payment QR code for invoice ${selectedBill.id}`}
+                                                    className="mx-auto h-48 w-48 rounded-xl border border-slate-200 bg-white p-2"
+                                                />
+                                            ) : paymentQrError ? (
+                                                <p role="alert" className="text-xs font-semibold text-rose-700">{paymentQrError}</p>
+                                            ) : (
+                                                <p className="py-16 text-xs text-slate-500">Generating QR code…</p>
+                                            )}
+                                            <p className="mt-3 text-xs font-bold text-slate-800">Amount: {payableTotal.toLocaleString('en-US')} VND</p>
+                                            <p className="mt-1 text-[10px] text-slate-500">Demo QR contains invoice and amount only; bank payment is not connected.</p>
+                                        </div>
+                                    )}
 
                                     {paymentMethod === 'Cash' && (
                                         <div className="space-y-2">
@@ -264,7 +323,7 @@ export default function BillingPayment() {
                                             />
                                             {cashGiven && (
                                                 <div className="text-xs font-bold text-emerald-800 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
-                                                    Change Due: {calculatedChange.toLocaleString('vi-VN')} đ
+                                                    Change Due: {calculatedChange.toLocaleString('en-US')} VND
                                                 </div>
                                             )}
                                         </div>
@@ -279,7 +338,7 @@ export default function BillingPayment() {
                                 </form>
                             ) : (
                                 <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl text-center text-emerald-800 text-xs font-bold">
-                                    ✅ Paid via {selectedBill.paymentMethod}
+                                    <IconGlyph glyph="✅" size={15} /> Paid via {selectedBill.paymentMethod}
                                 </div>
                             )}
                         </div>
@@ -302,7 +361,7 @@ export default function BillingPayment() {
                             {selectedBill.items.map((it, idx) => (
                                 <div key={idx} className="flex justify-between">
                                     <span>{it.name} x{it.qty}</span>
-                                    <span>{(it.price * it.qty).toLocaleString('vi-VN')} đ</span>
+                                    <span>{(it.price * it.qty).toLocaleString('en-US')} VND</span>
                                 </div>
                             ))}
                         </div>
@@ -310,15 +369,15 @@ export default function BillingPayment() {
                         <div className="py-4 space-y-1.5 border-b border-dashed border-slate-300">
                             <div className="flex justify-between">
                                 <span>Subtotal</span>
-                                <span>{selectedBill.subtotal.toLocaleString('vi-VN')} đ</span>
+                                <span>{selectedBill.subtotal.toLocaleString('en-US')} VND</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>VAT 10%</span>
-                                <span>{selectedBill.vat.toLocaleString('vi-VN')} đ</span>
+                                <span>{selectedBill.vat.toLocaleString('en-US')} VND</span>
                             </div>
                             <div className="flex justify-between font-bold text-sm pt-2">
                                 <span>TOTAL</span>
-                                <span>{selectedBill.total.toLocaleString('vi-VN')} đ</span>
+                                <span>{selectedBill.total.toLocaleString('en-US')} VND</span>
                             </div>
                         </div>
 
