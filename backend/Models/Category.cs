@@ -1,18 +1,18 @@
+﻿
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace RestaurantAPI.Models;
-
-[Table("Categories")]
-public class Category
+namespace backend.Models
 {
-    [Key]
-    public int CategoryID { get; set; }
+    [Table("Categories")]
+    public class Category
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int CategoryID { get; set; }
 
-    [Required]
-    [StringLength(100)]
-    public string CategoryName { get; set; } = string.Empty;
-
-    // Navigation
-    public ICollection<MenuItem> MenuItems { get; set; } = new List<MenuItem>();
+        [Required(ErrorMessage = "Tên danh mục không được để trống.")]
+        [StringLength(100, ErrorMessage = "Tên danh mục không được vượt quá 100 ký tự.")]
+        public string CategoryName { get; set; } = string.Empty;
+    }
 }

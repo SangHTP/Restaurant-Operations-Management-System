@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { mockFoods, INITIAL_CATEGORIES } from '../../data/mockFoods';
+import { useEffect, useState } from 'react';
+import { mockFoods } from '../../data/mockFoods';
 import { useAuth } from '../../context/AuthContext';
 import {
     Clock3,
@@ -11,6 +11,12 @@ import {
 } from 'lucide-react';
 import IconGlyph from '../../components/common/IconGlyph';
 
+import {
+    getCategories,
+    createCategory,
+    updateCategory,
+    deleteCategory,
+} from '../../api/menuApi';
 export default function Menu() {
     const { currentUser } = useAuth();
     const isManager = currentUser?.role === 'Manager' || currentUser?.role === 'Owner';
@@ -18,7 +24,12 @@ export default function Menu() {
 
     // State lists
     const [foods, setFoods] = useState(mockFoods);
-    const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+    const [categories, setCategories] = useState([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(false);
+    const [categoryError, setCategoryError] = useState('');
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [editCatName, setEditCatName] = useState('');
+    const [categorySubmitting, setCategorySubmitting] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState('All Dishes');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
@@ -115,40 +126,190 @@ export default function Menu() {
     };
 
     // Create Food Category
-    const handleAddCategory = (e) => {
+    const handleAddCategory = async (e) => {
         e.preventDefault();
+
         const trimmed = newCatName.trim();
+
         if (!trimmed) {
-            showToast('Please enter a category name first!');
+            showToast('Please enter a category name.');
             return;
         }
-        if (categories.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-            showToast(`Category "${trimmed}" already exists!`);
+
+        if (categories.some(
+            (category) =>
+                category.name.toLowerCase() === trimmed.toLowerCase()
+        )) {
+            showToast(`Category "${trimmed}" already exists.`);
             return;
         }
-        const icons = ['🍲', '🍱', '🍷', '🍰', '🍕', '🥩', '🥗', '🍣', '🥂', '✦'];
-        const randomIcon = icons[categories.length % icons.length];
-        const newCat = {
-            id: `cat-${Date.now()}`,
-            name: trimmed,
-            icon: randomIcon,
-            count: 0,
-        };
-        setCategories((prev) => [...prev, newCat]);
-        setNewCatName('');
-        showToast(`Successfully added category "${trimmed}"`);
+
+        setCategorySubmitting(true);
+        setCategoryError('');
+
+        try {
+            await createCategory(trimmed);
+
+            const data = await getCategories();
+
+            setCategories([
+                { id: 'all-dishes', name: 'All Dishes', icon: '✨', count: 0 },
+                ...data.map((category) => ({
+                    id: category.categoryID ?? category.CategoryID,
+                    name: category.categoryName ?? category.CategoryName,
+                    icon: '🍽️',
+                    count: 0,
+                })),
+            ]);
+
+            setNewCatName('');
+            showToast(`Category "${trimmed}" created successfully.`);
+        } catch (error) {
+            setCategoryError(error.message || 'Failed to create category.');
+        } finally {
+            setCategorySubmitting(false);
+        }
     };
+
+
+    const handleUpdateCategory = async (e) => {
+        e.preventDefault();
+
+        if (!editingCategory) return;
+
+        const trimmed = editCatName.trim();
+
+        if (!trimmed) {
+            setCategoryError('Please enter a category name.');
+            return;
+        }
+
+        const duplicate = categories.some(
+            (category) =>
+                category.id !== editingCategory.id &&
+                category.name.toLowerCase() === trimmed.toLowerCase() &&
+                category.name !== 'All Dishes'
+        );
+
+        if (duplicate) {
+            setCategoryError(`Category "${trimmed}" already exists.`);
+            return;
+        }
+
+        setCategorySubmitting(true);
+        setCategoryError('');
+
+        try {
+            await updateCategory(editingCategory.id, trimmed);
+
+            const data = await getCategories();
+
+            setCategories([
+                {
+                    id: 'all-dishes',
+                    name: 'All Dishes',
+                    icon: '✨',
+                    count: 0,
+                },
+                ...data.map((category) => ({
+                    id: category.categoryID ?? category.CategoryID,
+                    name: category.categoryName ?? category.CategoryName,
+                    icon: '🍽️',
+                    count: 0,
+                })),
+            ]);
+
+            if (selectedCategory === editingCategory.name) {
+                setSelectedCategory(trimmed);
+            }
+
+            setEditingCategory(null);
+            setEditCatName('');
+            showToast(`Category "${trimmed}" updated successfully.`);
+        } catch (error) {
+            setCategoryError(
+                error.message || 'Failed to update category.'
+            );
+        } finally {
+            setCategorySubmitting(false);
+        }
+    };
+
 
     // Delete Food Category
     const handleDeleteCategory = (id, name) => {
-        if (categories.length <= 1) {
-            showToast('Cannot delete all categories! At least 1 must remain.');
-            return;
-        }
-        setCategories((prev) => prev.filter((c) => c.id !== id));
-        if (selectedCategory === name) setSelectedCategory('All Dishes');
-        showToast(`Deleted category "${name}"`);
+        setConfirmModal({
+            title: 'Delete Category',
+            message: `Are you sure you want to delete "${name}"?`,
+            onConfirm: async () => {
+                setCategorySubmitting(true);
+                setCategoryError('');
+
+                try {
+                    await deleteCategory(id);
+
+                    setCategories((prev) =>
+                        prev.filter((category) => category.id !== id)
+                    );
+
+                    if (selectedCategory === name) {
+                        setSelectedCategory('All Dishes');
+                    }
+
+                    showToast(`Category "${name}" deleted successfully.`);
+                    setConfirmModal(null);
+                } catch (error) {
+                    setCategoryError(
+                        error.message || 'Failed to delete category.'
+                    );
+                    setConfirmModal(null);
+                } finally {
+                    setCategorySubmitting(false);
+                }
+            },
+        });
     };
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadCategories() {
+            setCategoriesLoading(true);
+            setCategoryError('');
+
+            try {
+                const data = await getCategories();
+
+                if (cancelled) return;
+
+                const mapped = data.map((category) => ({
+                    id: category.categoryID ?? category.CategoryID,
+                    name: category.categoryName ?? category.CategoryName,
+                    icon: '🍽️',
+                    count: 0,
+                }));
+
+                setCategories([
+                    { id: 'all-dishes', name: 'All Dishes', icon: '✨', count: 0 },
+                    ...mapped,
+                ]);
+            } catch (error) {
+                if (!cancelled) {
+                    setCategoryError(error.message || 'Unable to load categories.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setCategoriesLoading(false);
+                }
+            }
+        }
+
+        loadCategories();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Filtered Food List
     const filteredFoods = foods.filter((food) => {
@@ -789,35 +950,103 @@ export default function Menu() {
                             </button>
                         </form>
 
+
                         {/* Category List */}
-                        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[55vh] overflow-y-auto pr-2">
+                        <div className="mt-4 space-y-2 max-h-60 overflow-y-auto">
+                            {categoriesLoading && (
+                                <p className="text-xs text-slate-500 py-2">
+                                    Loading categories...
+                                </p>
+                            )}
+
+                            {categoryError && (
+                                <p className="text-xs text-rose-600 py-2">
+                                    {categoryError}
+                                </p>
+                            )}
+
                             {categories.map((c) => (
-                                <div key={c.id} className="flex justify-between items-center gap-3 min-h-16 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm">
-                                    <div className="flex items-center gap-2">
-                                        <span>{c.icon}</span>
-                                        <span className="font-bold text-slate-800">{c.name}</span>
-                                    </div>
-                                    {c.name !== 'All Dishes' && (
-                                        <button
-                                            onClick={() => handleDeleteCategory(c.id, c.name)}
-                                            className="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 hover:bg-rose-50 rounded-lg cursor-pointer"
-                                            title="Delete Category"
+                                <div
+                                    key={c.id}
+                                    className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs"
+                                >
+                                    {editingCategory?.id === c.id ? (
+                                        <form
+                                            onSubmit={handleUpdateCategory}
+                                            className="flex items-center gap-2"
                                         >
-                                            <Trash2 size={14} aria-hidden="true" /> Delete
-                                        </button>
+                                            <input
+                                                autoFocus
+                                                value={editCatName}
+                                                onChange={(e) => setEditCatName(e.target.value)}
+                                                className="flex-1 min-w-0 bg-white border border-slate-300 rounded-lg px-2 py-2 focus:ring-2 focus:ring-[#DCC8A8] outline-none"
+                                                placeholder="Category name"
+                                                disabled={categorySubmitting}
+                                            />
+
+                                            <button
+                                                type="submit"
+                                                disabled={categorySubmitting}
+                                                className="text-emerald-700 hover:text-emerald-900 font-bold px-2 py-1 disabled:opacity-50"
+                                            >
+                                                {categorySubmitting ? 'Saving...' : 'Save'}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                disabled={categorySubmitting}
+                                                onClick={() => {
+                                                    setEditingCategory(null);
+                                                    setEditCatName('');
+                                                    setCategoryError('');
+                                                }}
+                                                className="text-slate-500 hover:text-slate-700 font-bold px-1 py-1"
+                                            >
+                                                Cancel
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        <div className="flex justify-between items-center gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
+                                                <span>{c.icon}</span>
+                                                <span className="font-bold text-slate-800 break-words">
+                                                    {c.name}
+                                                </span>
+                                            </div>
+
+                                            {c.name !== 'All Dishes' && (
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    <button
+                                                        type="button"
+                                                        disabled={categorySubmitting}
+                                                        onClick={() => {
+                                                            setEditingCategory(c);
+                                                            setEditCatName(c.name);
+                                                            setCategoryError('');
+                                                        }}
+                                                        className="text-blue-600 hover:text-blue-800 font-bold px-2 py-1 hover:bg-blue-50 rounded-lg disabled:opacity-50"
+                                                        title="Edit Category"
+                                                    >
+                                                        ✏️ Edit
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={categorySubmitting}
+                                                        onClick={() => handleDeleteCategory(c.id, c.name)}
+                                                        className="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 hover:bg-rose-50 rounded-lg disabled:opacity-50"
+                                                        title="Delete Category"
+                                                    >
+                                                        🗑 Delete
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             ))}
                         </div>
 
-                        <div className="flex justify-end pt-5 border-t border-slate-200 mt-5">
-                            <button
-                                onClick={() => setIsCategoryModalOpen(false)}
-                                className="px-5 py-2 bg-slate-200 text-slate-700 font-bold text-xs uppercase rounded-xl"
-                            >
-                                Done
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}

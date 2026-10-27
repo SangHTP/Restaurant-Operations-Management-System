@@ -1,25 +1,33 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace RestaurantAPI.Models;
-
-[Table("Tables")]
-public class Table
+namespace backend.Models
 {
-    [Key]
-    public int TableID { get; set; }
+    [Table("Tables")]
+    public class Table
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int TableID { get; set; }
 
-    public int AreaID { get; set; }
+        [Required(ErrorMessage = "Vui lòng chọn khu vực.")]
+        public int AreaID { get; set; }
 
-    [ForeignKey("AreaID")]
-    public Area? Area { get; set; }
+        [Required(ErrorMessage = "Tên bàn không được để trống.")]
+        [StringLength(50, ErrorMessage = "Tên bàn tối đa 50 ký tự.")]
+        public string TableName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(50)]
-    public string TableName { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Sức chứa không được để trống.")]
+        [Range(1, 100, ErrorMessage = "Sức chứa phải từ 1 đến 100 người.")]
+        public int Capacity { get; set; }
 
-    public int Capacity { get; set; }
+        [Required(ErrorMessage = "Trạng thái bàn không được để trống.")]
+        [StringLength(50)]
+        public string Status { get; set; } = "Available";
 
-    [StringLength(50)]
-    public string Status { get; set; } = "Trống";
+        public bool IsDeleted { get; set; } = false;
+
+        [ForeignKey("AreaID")]
+        public virtual Area? Area { get; set; }
+    }
 }

@@ -1,21 +1,22 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace RestaurantAPI.Models;
-
-[Table("Areas")]
-public class Area
+namespace backend.Models
 {
-    [Key]
-    public int AreaID { get; set; }
+    [Table("Areas")]
+    public class Area
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int AreaID { get; set; }
 
-    [Required]
-    [StringLength(100)]
-    public string AreaName { get; set; } = string.Empty;
+        [Required(ErrorMessage = "Tên khu vực không được để trống.")]
+        [StringLength(100, ErrorMessage = "Tên khu vực không được vượt quá 100 ký tự.")]
+        public string AreaName { get; set; } = string.Empty;
 
-    [StringLength(255)]
-    public string? Description { get; set; }
+        [StringLength(255, ErrorMessage = "Mô tả không được vượt quá 255 ký tự.")]
+        public string? Description { get; set; }
 
-    // Navigation
-    public ICollection<Table> Tables { get; set; } = new List<Table>();
+        public bool IsDeleted { get; set; } = false;
+    }
 }
