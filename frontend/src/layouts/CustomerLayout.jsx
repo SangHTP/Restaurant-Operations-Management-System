@@ -1,13 +1,24 @@
 import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { AtSign, Camera, MapPin, UsersRound } from 'lucide-react';
 import Button from '../components/common/Button';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 import logoApp from '../assets/logo/logo.png';
 
 export default function CustomerLayout() {
     const { currentUser, logout } = useAuth();
     const navigate = useNavigate();
+    const confirm = useConfirm();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const shouldLogout = await confirm({
+            title: 'Log out of your account?',
+            message: 'Are you sure you want to log out of Lumière Restaurant?',
+            confirmText: 'Log Out',
+            cancelText: 'Stay',
+            icon: 'logout',
+        });
+        if (!shouldLogout) return;
         logout();
         navigate('/');
     };
@@ -41,8 +52,13 @@ export default function CustomerLayout() {
                         <Link to="/menu" className="text-[#fff8e7] hover:text-[#D9C6A5] transition-colors duration-200">
                             MENU
                         </Link>
-                        <Link to="/restaurant-info" className="text-[#fff8e7] hover:text-[#D9C6A5] transition-colors duration-200">
-                            RESTAURANT INFO
+                        {currentUser?.role === 'Customer' && (
+                            <Link to="/my-reservations" className="text-[#fff8e7] hover:text-[#D9C6A5] transition-colors duration-200">
+                                MY BOOKINGS
+                            </Link>
+                        )}
+                        <Link to="/news" className="text-[#fff8e7] hover:text-[#D9C6A5] transition-colors duration-200">
+                            NEWS
                         </Link>
                         <Link to="/restaurant-layout" className="text-[#fff8e7] hover:text-[#D9C6A5] transition-colors duration-200">
                             LAYOUT
@@ -107,7 +123,7 @@ export default function CustomerLayout() {
             </header>
 
             {/* BODY CONTENT */}
-            <main className="flex-1 relative z-10">
+            <main className="flex-1 relative">
                 <Outlet />
             </main>
 
@@ -139,7 +155,7 @@ export default function CustomerLayout() {
                                     </div>
                                 </div>
                                 <p className="text-xs text-[#6b7a94] leading-relaxed max-w-xs mb-8">
-                                    An exquisite fine dining experience at the heart of FPT University, Cần Thơ. Where culinary artistry meets elegant ambiance.
+                                    An exquisite fine dining experience at the heart of FPT University in Can Tho, where culinary artistry meets elegant ambiance.
                                 </p>
 
                                 {/* Info grid */}
@@ -149,7 +165,7 @@ export default function CustomerLayout() {
                                         <ul className="space-y-2 text-xs text-[#6b7a94]">
                                             <li><Link to="/" className="hover:text-[#DCC8A8] transition-colors duration-200 flex items-center gap-1.5"><span className="text-[#DCC8A8] opacity-50">›</span>Home</Link></li>
                                             <li><Link to="/menu" className="hover:text-[#DCC8A8] transition-colors duration-200 flex items-center gap-1.5"><span className="text-[#DCC8A8] opacity-50">›</span>Menu</Link></li>
-                                            <li><Link to="/restaurant-info" className="hover:text-[#DCC8A8] transition-colors duration-200 flex items-center gap-1.5"><span className="text-[#DCC8A8] opacity-50">›</span>Restaurant Info</Link></li>
+                                            <li><Link to="/news" className="hover:text-[#DCC8A8] transition-colors duration-200 flex items-center gap-1.5"><span className="text-[#DCC8A8] opacity-50">›</span>News</Link></li>
                                             <li><Link to="/restaurant-layout" className="hover:text-[#DCC8A8] transition-colors duration-200 flex items-center gap-1.5"><span className="text-[#DCC8A8] opacity-50">›</span>Layout</Link></li>
                                         </ul>
                                     </div>
@@ -163,7 +179,7 @@ export default function CustomerLayout() {
                                             <h4 className="text-[#DCC8A8] font-serif font-bold text-[10px] tracking-[0.2em] uppercase mb-3">Contact</h4>
                                             <p className="text-xs text-[#6b7a94] leading-relaxed">
                                                 FPT University<br />
-                                                Cần Thơ City, Vietnam
+                                                Can Tho City, Vietnam
                                             </p>
                                         </div>
                                     </div>
@@ -174,18 +190,16 @@ export default function CustomerLayout() {
                             <div className="flex items-center gap-3">
                                 <span className="text-[10px] tracking-widest uppercase text-[#4a5568] mr-1">Follow</span>
                                 {[
-                                    { label: 'Facebook', path: 'M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z' },
-                                    { label: 'Instagram', path: 'M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37zM17.5 6.5h.01M7.5 2h9A5.5 5.5 0 0 1 22 7.5v9A5.5 5.5 0 0 1 16.5 22h-9A5.5 5.5 0 0 1 2 16.5v-9A5.5 5.5 0 0 1 7.5 2z' },
-                                    { label: 'Twitter/X', path: 'M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z' },
-                                ].map(({ label, path }) => (
+                                    { label: 'Facebook', Icon: UsersRound },
+                                    { label: 'Instagram', Icon: Camera },
+                                    { label: 'Twitter/X', Icon: AtSign },
+                                ].map(({ label, Icon }) => (
                                     <button
                                         key={label}
                                         title={label}
                                         className="w-8 h-8 rounded-full flex items-center justify-center border border-[rgba(220,200,168,0.2)] text-[#6b7a94] hover:text-[#DCC8A8] hover:border-[#DCC8A8] hover:bg-[rgba(220,200,168,0.08)] transition-all duration-200 cursor-pointer"
                                     >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d={path} />
-                                        </svg>
+                                        <Icon size={14} aria-hidden="true" />
                                     </button>
                                 ))}
                             </div>
@@ -194,7 +208,7 @@ export default function CustomerLayout() {
                         {/* RIGHT: Google Maps */}
                         <div className="lg:pl-10 py-12 flex flex-col">
                             <h4 className="text-[#DCC8A8] font-serif font-bold text-[10px] tracking-[0.2em] uppercase mb-5 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                                <MapPin size={12} aria-hidden="true" />
                                 Find Us
                             </h4>
                             <div className="flex-1 rounded-2xl overflow-hidden border border-[rgba(220,200,168,0.2)] shadow-2xl" style={{ minHeight: '280px', boxShadow: '0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(220,200,168,0.1)' }}>
@@ -210,8 +224,8 @@ export default function CustomerLayout() {
                                 ></iframe>
                             </div>
                             <p className="mt-3 text-[10px] text-[#4a5568] flex items-center gap-1.5">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                                Trường Đại học FPT Cần Thơ, Việt Nam
+                                <MapPin size={10} aria-hidden="true" />
+                                FPT University, Can Tho, Vietnam
                             </p>
                         </div>
                     </div>
@@ -224,7 +238,7 @@ export default function CustomerLayout() {
                             © 2026 <span className="text-[#6b7a94]">Lumière Restaurant</span>. All rights reserved.
                         </p>
                         <p className="text-[10px] text-[#4a5568] tracking-widest uppercase">
-                            Fine Dining · Cần Thơ
+                            Fine Dining · Can Tho
                         </p>
                     </div>
                 </div>

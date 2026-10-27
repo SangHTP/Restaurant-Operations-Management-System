@@ -353,7 +353,7 @@ export default function TableLayout() {
             {toast && (
                 <div className={`fixed top-20 right-6 z-[100] px-5 py-3 rounded-xl shadow-xl text-xs font-semibold flex items-center gap-2 border animate-bounce
                     ${toast.type === 'error' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-[#081126] text-[#DCC8A8] border-[#DCC8A8]/30'}`}>
-                    <span>{toast.type === 'error' ? '⚠' : '✓'}</span> {toast.msg}
+                    <IconGlyph glyph={toast.type === 'error' ? '⚠' : '✓'} size={15} /> {toast.msg}
                 </div>
             )}
 
@@ -372,7 +372,7 @@ export default function TableLayout() {
                                 <button key={m} onClick={() => setViewMode(m)}
                                     className={`px-3 py-1.5 rounded-md text-[11px] font-semibold transition cursor-pointer
                                         ${viewMode === m ? 'bg-[#DCC8A8] text-[#081126] shadow' : 'text-slate-400 hover:text-white'}`}>
-                                    {m === 'floorplan' ? '🗺 Floor Plan' : '📋 List'}
+                                    {m === 'floorplan' ? <><IconGlyph glyph="🗺️" size={14} /> Floor Plan</> : <><IconGlyph glyph="📋" size={14} /> List</>}
                                 </button>
                             ))}
                         </div>
@@ -413,7 +413,7 @@ export default function TableLayout() {
                             ${selectedAreaId === area.id
                                 ? 'bg-[#081126] text-[#F5F2EA] border-[#DCC8A8]/40 shadow-md'
                                 : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300'}`}>
-                        <span className="text-base">{area.icon}</span>
+                        <IconGlyph glyph={area.icon} size={18} />
                         <div>
                             <div className="text-xs font-bold">{area.name}</div>
                             <div className={`text-[10px] ${selectedAreaId === area.id ? 'text-[#DCC8A8]/60' : 'text-slate-400'}`}>
@@ -422,8 +422,8 @@ export default function TableLayout() {
                         </div>
                         {isManager && (
                             <div className="flex gap-0.5 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-[10px]">
-                                <span onClick={e => { e.stopPropagation(); setAreaModal({...area}); }} className="hover:bg-white/20 p-1 rounded cursor-pointer">✏️</span>
-                                <span onClick={e => { e.stopPropagation(); handleDeleteArea(area.id, area.name); }} className="hover:bg-rose-100 p-1 rounded cursor-pointer">🗑</span>
+                                <span onClick={e => { e.stopPropagation(); setAreaModal({...area}); }} className="hover:bg-white/20 p-1 rounded cursor-pointer"><IconGlyph glyph="✏️" size={14} /></span>
+                                <span onClick={e => { e.stopPropagation(); handleDeleteArea(area.id, area.name); }} className="hover:bg-rose-100 p-1 rounded cursor-pointer"><IconGlyph glyph="🗑" size={14} /></span>
                             </div>
                         )}
                     </button>
@@ -439,7 +439,7 @@ export default function TableLayout() {
                         {/* Header bar */}
                         <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
                             <div className="flex items-center gap-2">
-                                <span>{currentArea?.icon}</span>
+                                <IconGlyph glyph={currentArea?.icon} size={18} />
                                 <div>
                                     <h2 className="text-sm font-bold text-slate-800">{currentArea?.name}</h2>
                                     <p className="text-[10px] text-slate-400">{currentArea?.description} · Cap {currentArea?.capacity}</p>
@@ -484,7 +484,7 @@ export default function TableLayout() {
 
                             {floorTables.length === 0 && (
                                 <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-300">
-                                    <span className="text-4xl mb-2">🪑</span>
+                                    <IconGlyph glyph="🪑" size={36} className="mb-2" />
                                     <p className="text-sm font-medium">No tables in this area</p>
                                     {isManager && (
                                         <button onClick={() => { setTableForm({ name:'', seats:4, areaId:selectedAreaId, status:'Available' }); setTableModal('create'); }}
@@ -525,13 +525,13 @@ export default function TableLayout() {
                                     {selectedTable.guest && (
                                         <div className="bg-slate-50 rounded-lg p-3 border border-slate-100">
                                             <p className="text-[9px] font-bold text-slate-400 uppercase">Guest</p>
-                                            <p className="text-xs font-semibold text-slate-800 mt-0.5">👥 {selectedTable.guest}</p>
+                                            <p className="text-xs font-semibold text-slate-800 mt-0.5"><IconGlyph glyph="👥" size={13} /> {selectedTable.guest}</p>
                                         </div>
                                     )}
                                     {selectedTable.mergedWith && (
                                         <div className="bg-violet-50 rounded-lg p-3 border border-violet-100">
                                             <p className="text-[9px] font-bold text-violet-400 uppercase">Merged With</p>
-                                            <p className="text-xs font-semibold text-violet-800 mt-0.5">🔗 {selectedTable.mergedWith}</p>
+                                            <p className="text-xs font-semibold text-violet-800 mt-0.5"><IconGlyph glyph="🔗" size={13} /> {selectedTable.mergedWith}</p>
                                         </div>
                                     )}
                                     {selectedTable.note && (
@@ -545,18 +545,18 @@ export default function TableLayout() {
                                         {isStaff && (
                                             <button onClick={() => setStatusModal(selectedTable)}
                                                 className="w-full py-2 bg-[#081126] text-[#DCC8A8] text-[11px] font-semibold rounded-lg hover:bg-slate-800 cursor-pointer transition">
-                                                ⚡ Update Status
+                                                <IconGlyph glyph="⚡" size={14} /> Update Status
                                             </button>
                                         )}
                                         {isManager && (
                                             <div className="grid grid-cols-2 gap-1.5 pt-1">
                                                 <button onClick={() => setTableModal({...selectedTable})}
                                                     className="py-1.5 bg-slate-50 border border-slate-200 text-slate-700 text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-slate-100 transition">
-                                                    ✏ Edit
+                                                    <IconGlyph glyph="✏" size={14} /> Edit
                                                 </button>
                                                 <button onClick={() => handleDeleteTable(selectedTable)}
                                                     className="py-1.5 bg-rose-50 border border-rose-200 text-rose-600 text-[10px] font-semibold rounded-lg cursor-pointer hover:bg-rose-100 transition">
-                                                    🗑 Delete
+                                                    <IconGlyph glyph="🗑" size={14} /> Delete
                                                 </button>
                                             </div>
                                         )}
@@ -565,7 +565,7 @@ export default function TableLayout() {
                             </div>
                         ) : (
                             <div className="bg-slate-50 rounded-2xl border border-dashed border-slate-200 p-6 text-center">
-                                <span className="text-3xl block mb-2 opacity-40">🖱️</span>
+                                <IconGlyph glyph="🖱️" size={30} className="mb-2 opacity-40" />
                                 <p className="text-xs font-medium text-slate-500">Select a table on the floor plan</p>
                                 <p className="text-[10px] text-slate-400 mt-0.5">to view details and take actions</p>
                             </div>

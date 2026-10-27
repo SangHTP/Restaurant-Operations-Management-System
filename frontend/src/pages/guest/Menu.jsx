@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { mockFoods } from '../../data/mockFoods';
 import { useAuth } from '../../context/AuthContext';
+import {
+    Clock3,
+    Folder,
+    Plus,
+    Search,
+    Trash2,
+    Utensils,
+} from 'lucide-react';
+import IconGlyph from '../../components/common/IconGlyph';
 
 import {
     getCategories,
@@ -24,6 +33,7 @@ export default function Menu() {
     const [selectedCategory, setSelectedCategory] = useState('All Dishes');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [quantityDrafts, setQuantityDrafts] = useState({});
 
     // Toast feedback state
     const [toast, setToast] = useState('');
@@ -56,32 +66,21 @@ export default function Menu() {
     // New Category Name input
     const [newCatName, setNewCatName] = useState('');
 
-    // Activate / Deactivate Food
-    const handleToggleActive = (id) => {
-        setFoods((prev) =>
-            prev.map((f) => {
-                if (f.id === id) {
-                    const nextActive = !f.active;
-                    showToast(`Dish "${f.name}" is now ${nextActive ? 'ACTIVE ✅' : 'INACTIVE 🚫'}`);
-                    return { ...f, active: nextActive };
-                }
-                return f;
-            })
-        );
-    };
+    const handleSetDailyQuantity = (id, value) => {
+        const quantity = Number(value);
+        if (!Number.isInteger(quantity)) return;
 
-    // Update Daily Quantity
-    const handleUpdateQuantity = (id, delta) => {
-        setFoods((prev) =>
-            prev.map((f) => {
-                if (f.id === id) {
-                    const newLeft = Math.max(0, f.dailyLeft + delta);
-                    showToast(`Updated stock for "${f.name}": ${newLeft} / ${f.dailyMax} portions left`);
-                    return { ...f, dailyLeft: newLeft };
-                }
-                return f;
-            })
-        );
+        setFoods((prev) => prev.map((food) => {
+            if (food.id !== id) return food;
+            const dailyLeft = Math.min(food.dailyMax, Math.max(0, quantity));
+            showToast(`Updated stock for "${food.name}": ${dailyLeft} / ${food.dailyMax} portions left`);
+            return { ...food, dailyLeft };
+        }));
+        setQuantityDrafts((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
     };
 
     // Create Food Submit
@@ -363,7 +362,7 @@ export default function Menu() {
                                 onClick={() => setIsCategoryModalOpen(true)}
                                 className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-[#DCC8A8] border border-[#DCC8A8]/30 font-bold text-xs uppercase tracking-wider rounded-xl transition cursor-pointer"
                             >
-                                📁 Categories
+                                <Folder size={16} aria-hidden="true" /> Categories
                             </button>
                             <button
                                 onClick={() => {
@@ -396,7 +395,7 @@ export default function Menu() {
 
                 {/* Search Bar */}
                 <div className="w-full lg:w-96 relative flex items-center">
-                    <span className="absolute left-4 text-slate-400">🔍</span>
+                    <Search size={18} className="absolute left-4 text-slate-400" aria-hidden="true" />
                     <input
                         type="text"
                         placeholder="Search gourmet dishes, ingredients, hotpot, BBQ..."
@@ -428,13 +427,12 @@ export default function Menu() {
                     <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.name)}
-                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border ${
-                            selectedCategory === cat.name
-                                ? 'bg-[#081126] text-[#DCC8A8] border-[#DCC8A8]/40 shadow-lg scale-105'
-                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                        }`}
+                        className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border ${selectedCategory === cat.name
+                            ? 'bg-[#081126] text-[#DCC8A8] border-[#DCC8A8]/40 shadow-lg scale-105'
+                            : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
                     >
-                        <span>{cat.icon}</span>
+                        <IconGlyph glyph={cat.icon} size={16} />
                         <span>{cat.name}</span>
                     </button>
                 ))}
@@ -444,7 +442,7 @@ export default function Menu() {
                         onClick={() => setIsCategoryModalOpen(true)}
                         className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-xs"
                     >
-                        <span>➕</span>
+                        <Plus size={16} aria-hidden="true" />
                         <span>Manage Categories</span>
                     </button>
                 )}
@@ -454,7 +452,7 @@ export default function Menu() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {filteredFoods.length === 0 ? (
                     <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300">
-                        <span className="text-4xl block mb-2">🍽️</span>
+                        <Utensils size={36} className="mb-2" aria-hidden="true" />
                         <p className="font-serif font-bold text-slate-700 text-lg">No dishes found matching your criteria</p>
                         <p className="text-xs text-slate-400 mt-1">Try resetting search keywords or category filters.</p>
                     </div>
@@ -462,9 +460,8 @@ export default function Menu() {
                     filteredFoods.map((food) => (
                         <div
                             key={food.id}
-                            className={`bg-white rounded-3xl border transition-all duration-300 shadow-md hover:shadow-2xl hover:-translate-y-1 overflow-hidden flex flex-col justify-between group ${
-                                !food.active ? 'opacity-60 bg-slate-50 border-slate-300' : 'border-stone-200/80 hover:border-[#DCC8A8]'
-                            }`}
+                            className={`bg-white rounded-3xl border transition-all duration-300 shadow-md hover:shadow-2xl hover:-translate-y-1 overflow-hidden flex flex-col justify-between group ${!food.active ? 'opacity-60 bg-slate-50 border-slate-300' : 'border-stone-200/80 hover:border-[#DCC8A8]'
+                                }`}
                         >
                             <div>
                                 {/* Food Image & Badges */}
@@ -488,11 +485,10 @@ export default function Menu() {
 
                                     {/* Top Right Active Status Badge */}
                                     <div className="absolute top-3 right-3">
-                                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg border backdrop-blur-md shadow-sm ${
-                                            food.active
-                                                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
-                                                : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
-                                        }`}>
+                                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg border backdrop-blur-md shadow-sm ${food.active
+                                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                                            : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
+                                            }`}>
                                             {food.active ? '● Active' : '✕ Inactive'}
                                         </span>
                                     </div>
@@ -520,44 +516,51 @@ export default function Menu() {
 
                                     <div className="mt-3 flex justify-between items-baseline">
                                         <span className="text-lg font-black text-[#081126]">
-                                            {food.price.toLocaleString('vi-VN')} đ
+                                            {food.price.toLocaleString('en-US')} ₫
                                         </span>
                                         <span className="text-[11px] text-slate-400 font-medium">
-                                            ⏱ {food.prepTime}
+                                            <Clock3 size={13} aria-hidden="true" /> {food.prepTime}
                                         </span>
                                     </div>
 
                                     {/* DAILY PORTION TRACKER */}
-                                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
                                         <div className="text-xs">
-                                            <span className="text-slate-400 font-medium block text-[10px] uppercase">Daily Portion Left:</span>
-                                            <span className={`font-bold ${
-                                                food.dailyLeft === 0 ? 'text-rose-600 font-black' :
-                                                food.dailyLeft <= 5 ? 'text-amber-600 font-bold' : 'text-emerald-700 font-bold'
-                                            }`}>
-                                                {food.dailyLeft} / {food.dailyMax} portions
-                                            </span>
+                                            <span className="text-slate-400 font-medium block text-[10px] uppercase">Today's portions remaining</span>
+                                            {(isManager || isKitchen) ? (
+                                                <div className="flex items-center gap-1.5 mt-1">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max={food.dailyMax}
+                                                        step="1"
+                                                        inputMode="numeric"
+                                                        aria-label={`Portions remaining for ${food.name}`}
+                                                        value={quantityDrafts[food.id] ?? food.dailyLeft}
+                                                        onChange={(e) => setQuantityDrafts((prev) => ({ ...prev, [food.id]: e.target.value }))}
+                                                        onBlur={(e) => {
+                                                            if (e.target.value !== '') handleSetDailyQuantity(food.id, e.target.value);
+                                                            else setQuantityDrafts((prev) => {
+                                                                const next = { ...prev };
+                                                                delete next[food.id];
+                                                                return next;
+                                                            });
+                                                        }}
+                                                        className={`w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#DCC8A8] ${food.dailyLeft === 0 ? 'text-rose-600' :
+                                                            food.dailyLeft <= 5 ? 'text-amber-600' : 'text-emerald-700'
+                                                            }`}
+                                                    />
+                                                    <span className="text-xs text-slate-500">/ {food.dailyMax} portions</span>
+                                                </div>
+                                            ) : (
+                                                <span className={`font-bold ${food.dailyLeft === 0 ? 'text-rose-600' :
+                                                    food.dailyLeft <= 5 ? 'text-amber-600' : 'text-emerald-700'
+                                                    }`}>
+                                                    {food.dailyLeft} / {food.dailyMax} portions
+                                                </span>
+                                            )}
                                         </div>
 
-                                        {/* Kitchen / Manager Quick Counter */}
-                                        {(isManager || isKitchen) && (
-                                            <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 border border-slate-200">
-                                                <button
-                                                    onClick={() => handleUpdateQuantity(food.id, -1)}
-                                                    title="Decrease portion"
-                                                    className="w-6 h-6 rounded-lg bg-white text-slate-700 font-bold hover:bg-rose-100 hover:text-rose-700 transition flex items-center justify-center cursor-pointer shadow-xs"
-                                                >
-                                                    -
-                                                </button>
-                                                <button
-                                                    onClick={() => handleUpdateQuantity(food.id, 1)}
-                                                    title="Increase portion"
-                                                    className="w-6 h-6 rounded-lg bg-white text-slate-700 font-bold hover:bg-emerald-100 hover:text-emerald-700 transition flex items-center justify-center cursor-pointer shadow-xs"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -568,18 +571,8 @@ export default function Menu() {
                                 {isManager && (
                                     <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
                                         <button
-                                            onClick={() => handleToggleActive(food.id)}
-                                            className={`flex-1 py-1.5 rounded-xl text-[11px] font-bold uppercase transition cursor-pointer border ${
-                                                food.active
-                                                    ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                                                    : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                            }`}
-                                        >
-                                            {food.active ? 'Hide' : 'Activate'}
-                                        </button>
-                                        <button
                                             onClick={() => setEditingFood({ ...food })}
-                                            className="px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 text-[11px] font-bold uppercase rounded-xl transition cursor-pointer"
+                                            className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 text-[11px] font-bold uppercase rounded-xl transition cursor-pointer"
                                         >
                                             Edit
                                         </button>
@@ -588,7 +581,7 @@ export default function Menu() {
                                             className="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer font-bold text-xs"
                                             title="Delete dish"
                                         >
-                                            🗑
+                                            <Trash2 size={14} aria-hidden="true" />
                                         </button>
                                     </div>
                                 )}
@@ -635,7 +628,7 @@ export default function Menu() {
                                     <h2 className="font-serif text-2xl font-bold text-slate-900">{viewingFood.name}</h2>
                                 </div>
                                 <span className="text-2xl font-black text-[#081126]">
-                                    {viewingFood.price.toLocaleString('vi-VN')} đ
+                                    {viewingFood.price.toLocaleString('en-US')} ₫
                                 </span>
                             </div>
 
@@ -781,6 +774,24 @@ export default function Menu() {
                                 ></textarea>
                             </div>
 
+                            <label className={`flex items-center justify-between gap-4 rounded-xl border p-3.5 cursor-pointer transition ${editingFood.active
+                                ? 'bg-emerald-50 border-emerald-200'
+                                : 'bg-slate-50 border-slate-200'
+                                }`}>
+                                <span>
+                                    <span className="block text-xs font-bold text-slate-800">Dish availability</span>
+                                    <span className="block text-[11px] text-slate-500 mt-0.5">
+                                        {editingFood.active ? 'Visible and available to order' : 'Hidden from the customer menu'}
+                                    </span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(editingFood.active)}
+                                    onChange={(e) => setEditingFood({ ...editingFood, active: e.target.checked })}
+                                    className="h-5 w-5 shrink-0 accent-emerald-700"
+                                />
+                            </label>
+
                             <div className="flex justify-end gap-2 pt-3">
                                 <button
                                     type="button"
@@ -865,6 +876,27 @@ export default function Menu() {
                                 ></textarea>
                             </div>
 
+                            {/* Active / Hide Toggle */}
+                            <label className={`flex items-center justify-between gap-4 rounded-xl border p-3.5 cursor-pointer transition ${editingFood.active
+                                ? 'bg-emerald-50 border-emerald-200'
+                                : 'bg-rose-50 border-rose-200'
+                                }`}>
+                                <span>
+                                    <span className={`block text-[11px] mt-0.5 ${editingFood.active
+                                        ? 'text-green-600'
+                                        : 'text-slate-500'
+                                        }`}>
+                                        {editingFood.active ? 'Active' : 'Hidden'}
+                                    </span>
+                                </span>
+                                <input
+                                    type="checkbox"
+                                    checked={Boolean(editingFood.active)}
+                                    onChange={(e) => setEditingFood({ ...editingFood, active: e.target.checked })}
+                                    className="h-5 w-5 shrink-0 accent-emerald-700"
+                                />
+                            </label>
+
                             <div className="flex justify-end gap-2 pt-3">
                                 <button
                                     type="button"
@@ -888,9 +920,9 @@ export default function Menu() {
             {/* CATEGORY MANAGEMENT MODAL */}
             {isCategoryModalOpen && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
-                        <div className="flex justify-between items-center pb-3 border-b border-stone-200">
-                            <h3 className="font-serif font-bold text-lg text-[#081126]">
+                    <div className="bg-white rounded-3xl max-w-3xl w-full max-h-[calc(100vh-2rem)] p-6 sm:p-8 shadow-2xl border border-stone-200 flex flex-col">
+                        <div className="flex justify-between items-center pb-4 border-b border-stone-200">
+                            <h3 className="font-serif font-bold text-xl text-[#081126]">
                                 Food Categories
                             </h3>
                             <button
@@ -902,17 +934,17 @@ export default function Menu() {
                         </div>
 
                         {/* Add Category Form */}
-                        <form onSubmit={handleAddCategory} className="mt-4 flex gap-2">
+                        <form onSubmit={handleAddCategory} className="mt-5 flex gap-3">
                             <input
                                 type="text"
                                 placeholder="New category name..."
                                 value={newCatName}
                                 onChange={(e) => setNewCatName(e.target.value)}
-                                className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-[#DCC8A8]"
+                                className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-[#DCC8A8]"
                             />
                             <button
                                 type="submit"
-                                className="px-4 py-2 bg-[#081126] text-[#DCC8A8] font-bold text-xs uppercase rounded-xl hover:bg-slate-800 cursor-pointer"
+                                className="px-5 py-3 bg-[#081126] text-[#DCC8A8] font-bold text-xs uppercase rounded-xl hover:bg-slate-800 cursor-pointer"
                             >
                                 + Add
                             </button>

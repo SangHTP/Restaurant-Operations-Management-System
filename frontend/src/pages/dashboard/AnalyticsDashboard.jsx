@@ -1,23 +1,45 @@
 import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 
 const REVENUE_STATS = {
-    dailyTotal: '45,280,000 đ',
-    monthlyTotal: '1,240,500,000 đ',
+    dailyTotal: '45,280,000 VND',
+    monthlyTotal: '1,240,500,000 VND',
     ordersToday: 86,
     avgTableTurn: '1.4 hours',
     satisfactionRate: '98.5%',
 };
 
 const BEST_SELLING = [
-    { rank: 1, name: 'Wagyu A5 Ribeye Flambé', sold: 142, revenue: '170,400,000 đ' },
-    { rank: 2, name: 'Galaxy Lobster Hotpot', sold: 98, revenue: '176,400,000 đ' },
-    { rank: 3, name: 'Truffle Mushroom Risotto', sold: 85, revenue: '38,250,000 đ' },
-    { rank: 4, name: 'Gold Leaf Cocktails', sold: 210, revenue: '52,500,000 đ' },
+    { rank: 1, name: 'Wagyu A5 Ribeye Flambé', sold: 142, revenue: '170,400,000 VND' },
+    { rank: 2, name: 'Galaxy Lobster Hotpot', sold: 98, revenue: '176,400,000 VND' },
+    { rank: 3, name: 'Truffle Mushroom Risotto', sold: 85, revenue: '38,250,000 VND' },
+    { rank: 4, name: 'Gold Leaf Cocktails', sold: 210, revenue: '52,500,000 VND' },
 ];
 
 const WORST_SELLING = [
-    { rank: 10, name: 'Steamed Tofu Salad', sold: 4, revenue: '480,000 đ' },
-    { rank: 9, name: 'Cold Tomato Soup', sold: 7, revenue: '1,050,000 đ' },
+    { rank: 10, name: 'Steamed Tofu Salad', sold: 4, revenue: '480,000 VND' },
+    { rank: 9, name: 'Cold Tomato Soup', sold: 7, revenue: '1,050,000 VND' },
+];
+
+const ORDER_STATUS_STATS = [
+    { status: 'Completed', count: 72, share: '83.7%' },
+    { status: 'In progress', count: 8, share: '9.3%' },
+    { status: 'Cancelled', count: 6, share: '7.0%' },
+];
+
+const DAILY_FOOD_QUANTITIES = [
+    { dish: 'Wagyu A5 Ribeye Flambé', breakfast: 12, lunch: 48, dinner: 82, total: 142 },
+    { dish: 'Galaxy Lobster Hotpot', breakfast: 4, lunch: 31, dinner: 63, total: 98 },
+    { dish: 'Truffle Mushroom Risotto', breakfast: 10, lunch: 37, dinner: 38, total: 85 },
+    { dish: 'Gold Leaf Cocktails', breakfast: 18, lunch: 72, dinner: 120, total: 210 },
+];
+
+const SERVICE_STATUS_STATS = [
+    { status: 'Waiting for kitchen', count: 3, detail: 'Orders accepted and queued' },
+    { status: 'Preparing', count: 5, detail: 'Currently being prepared' },
+    { status: 'Ready to serve', count: 4, detail: 'Awaiting service staff' },
+    { status: 'Serving', count: 2, detail: 'Being served at tables' },
+    { status: 'Completed', count: 72, detail: 'Service finished' },
 ];
 
 export default function AnalyticsDashboard() {
@@ -31,7 +53,54 @@ export default function AnalyticsDashboard() {
     };
 
     const handleExportReport = () => {
-        showToast('Generating & Exporting PDF / Excel Analytics Report...');
+        const reportRows = {
+            revenue: [
+                ['Metric', 'Value'],
+                ['Today revenue', REVENUE_STATS.dailyTotal],
+                ['Monthly revenue', REVENUE_STATS.monthlyTotal],
+                ['Orders today', REVENUE_STATS.ordersToday],
+            ],
+            dishes: [
+                ['Ranking', 'Dish', 'Quantity sold', 'Revenue'],
+                ...BEST_SELLING.map((dish) => [dish.rank, dish.name, dish.sold, dish.revenue]),
+                ...WORST_SELLING.map((dish) => ['Low-selling', dish.name, dish.sold, dish.revenue]),
+            ],
+            orders: [['Order status', 'Order count', 'Share'], ...ORDER_STATUS_STATS.map((row) => [row.status, row.count, row.share])],
+            tables: [
+                ['Dining area', 'Occupancy'],
+                ['Main Dining Hall', '85%'],
+                ['VIP Garden Lounge', '100%'],
+                ['Sky Bar Terrace', '60%'],
+            ],
+            quantities: [
+                ['Dish', 'Breakfast', 'Lunch', 'Dinner', 'Total portions'],
+                ...DAILY_FOOD_QUANTITIES.map((row) => [row.dish, row.breakfast, row.lunch, row.dinner, row.total]),
+            ],
+            service: [['Service status', 'Orders', 'Description'], ...SERVICE_STATUS_STATS.map((row) => [row.status, row.count, row.detail])],
+            staff: [
+                ['Employee', 'Position', 'Tables served', 'Rating'],
+                ['Staff Le Minh', 'Head Waiter', 42, 4.9],
+                ['Chef Antoine Le', 'Executive Chef', 86, 5.0],
+                ['Tran Hoang Nam', 'Senior Bartender', 35, 4.8],
+            ],
+            promo: [
+                ['Promotion', 'Uses', 'Sales generated'],
+                ['LUMIERE10 (VIP 10% OFF)', 28, '84,000,000 VND'],
+                ['AUTUMN500K (500k Voucher)', 12, '42,000,000 VND'],
+            ],
+        };
+        const escapeCsv = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+        const csv = reportRows[reportType].map((row) => row.map(escapeCsv).join(',')).join('\r\n');
+        const file = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+        const downloadUrl = URL.createObjectURL(file);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `lumiere-${reportType}-${dateRange.toLowerCase()}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        showToast('Report exported as CSV.');
     };
 
     return (
@@ -64,7 +133,7 @@ export default function AnalyticsDashboard() {
                     onClick={handleExportReport}
                     className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer flex items-center gap-2"
                 >
-                    📥 Export Report (PDF/Excel)
+                    <IconGlyph glyph="📥" size={15} /> Export Report (CSV)
                 </button>
             </div>
 
@@ -89,11 +158,14 @@ export default function AnalyticsDashboard() {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
                     <div className="flex gap-2 overflow-x-auto">
                         {[
-                            { id: 'revenue', label: '📊 Revenue & Sales' },
-                            { id: 'dishes', label: '🥩 Best & Worst Dishes' },
-                            { id: 'tables', label: '🪑 Table Occupancy' },
-                            { id: 'staff', label: '👨‍🍳 Staff Performance' },
-                            { id: 'promo', label: '🎟️ Promotion Impact' },
+                            { id: 'revenue', label: 'Revenue & Sales', icon: '📊' },
+                            { id: 'dishes', label: 'Best & Worst Dishes', icon: '🥩' },
+                            { id: 'orders', label: 'Order Statistics', icon: '🧾' },
+                            { id: 'tables', label: 'Table Occupancy', icon: '🪑' },
+                            { id: 'quantities', label: 'Daily Food Quantity', icon: '🍽️' },
+                            { id: 'service', label: 'Service Status', icon: '🛎️' },
+                            { id: 'staff', label: 'Staff Performance', icon: '👨‍🍳' },
+                            { id: 'promo', label: 'Promotion Impact', icon: '🎟️' },
                         ].map(t => (
                             <button
                                 key={t.id}
@@ -104,7 +176,7 @@ export default function AnalyticsDashboard() {
                                         : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                                 }`}
                             >
-                                {t.label}
+                                <><IconGlyph glyph={t.icon} size={14} /> {t.label}</>
                             </button>
                         ))}
                     </div>
@@ -163,7 +235,7 @@ export default function AnalyticsDashboard() {
                 {reportType === 'dishes' && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                            <h4 className="font-serif font-bold text-emerald-900 text-lg">🏆 Top 4 Best-Selling Dishes</h4>
+                            <h4 className="font-serif font-bold text-emerald-900 text-lg"><IconGlyph glyph="🏆" size={18} /> Top 4 Best-Selling Dishes</h4>
                             <div className="divide-y divide-slate-200">
                                 {BEST_SELLING.map(d => (
                                     <div key={d.rank} className="py-2.5 flex justify-between items-center text-xs">
@@ -178,7 +250,7 @@ export default function AnalyticsDashboard() {
                         </div>
 
                         <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-3">
-                            <h4 className="font-serif font-bold text-rose-900 text-lg">⚠️ Lowest Selling Dishes (Needs Promotion)</h4>
+                            <h4 className="font-serif font-bold text-rose-900 text-lg"><IconGlyph glyph="⚠️" size={18} /> Lowest Selling Dishes (Needs Promotion)</h4>
                             <div className="divide-y divide-slate-200">
                                 {WORST_SELLING.map(d => (
                                     <div key={d.rank} className="py-2.5 flex justify-between items-center text-xs">
@@ -190,6 +262,26 @@ export default function AnalyticsDashboard() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {reportType === 'orders' && (
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-serif text-xl font-bold text-slate-900">Order Statistics</h3>
+                            <p className="text-xs text-slate-500">Order volume and distribution for the selected reporting period</p>
+                        </div>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                            {ORDER_STATUS_STATS.map((row) => (
+                                <div key={row.status} className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                                    <span className="text-xs font-bold uppercase tracking-wide text-slate-500">{row.status}</span>
+                                    <div className="mt-2 flex items-end justify-between">
+                                        <span className="text-3xl font-black text-[#081126]">{row.count}</span>
+                                        <span className="text-sm font-semibold text-slate-500">{row.share}</span>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -214,21 +306,74 @@ export default function AnalyticsDashboard() {
                     </div>
                 )}
 
+                {reportType === 'quantities' && (
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-serif text-xl font-bold text-slate-900">Daily Food Quantity Report</h3>
+                            <p className="text-xs text-slate-500">Portions sold by dish and meal period</p>
+                        </div>
+                        <div className="overflow-x-auto rounded-2xl border border-slate-200">
+                            <table className="w-full min-w-[640px] text-left text-sm">
+                                <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                                    <tr>
+                                        <th className="px-4 py-3">Dish</th>
+                                        <th className="px-4 py-3 text-right">Breakfast</th>
+                                        <th className="px-4 py-3 text-right">Lunch</th>
+                                        <th className="px-4 py-3 text-right">Dinner</th>
+                                        <th className="px-4 py-3 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {DAILY_FOOD_QUANTITIES.map((row) => (
+                                        <tr key={row.dish}>
+                                            <td className="px-4 py-3 font-semibold text-slate-800">{row.dish}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{row.breakfast}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{row.lunch}</td>
+                                            <td className="px-4 py-3 text-right text-slate-600">{row.dinner}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-[#081126]">{row.total}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {reportType === 'service' && (
+                    <div className="space-y-4">
+                        <div>
+                            <h3 className="font-serif text-xl font-bold text-slate-900">Service Status Report</h3>
+                            <p className="text-xs text-slate-500">Current order flow across kitchen and table service</p>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {SERVICE_STATUS_STATS.map((row) => (
+                                <div key={row.status} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                    <div>
+                                        <p className="font-bold text-slate-800">{row.status}</p>
+                                        <p className="mt-1 text-xs text-slate-500">{row.detail}</p>
+                                    </div>
+                                    <span className="rounded-xl bg-white px-3 py-2 text-lg font-black text-[#081126] shadow-sm">{row.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {reportType === 'staff' && (
                     <div className="space-y-3 text-xs">
                         <h3 className="font-serif font-bold text-xl text-slate-900">Employee Service Efficiency Ratings</h3>
                         <div className="divide-y divide-slate-100">
                             {[
-                                { name: 'Staff Le Minh', role: 'Head Waiter', rating: '4.9 ⭐', orders: 42 },
-                                { name: 'Chef Antoine Le', role: 'Executive Chef', rating: '5.0 ⭐', orders: 86 },
-                                { name: 'Tran Hoang Nam', role: 'Senior Bartender', rating: '4.8 ⭐', orders: 35 },
+                                { name: 'Staff Le Minh', role: 'Head Waiter', rating: 4.9, orders: 42 },
+                                { name: 'Chef Antoine Le', role: 'Executive Chef', rating: 5.0, orders: 86 },
+                                { name: 'Tran Hoang Nam', role: 'Senior Bartender', rating: 4.8, orders: 35 },
                             ].map((s, idx) => (
                                 <div key={idx} className="py-3 flex justify-between items-center">
                                     <div>
                                         <span className="font-bold text-slate-900">{s.name} ({s.role})</span>
                                         <span className="text-slate-400 block text-[10px]">{s.orders} tables served</span>
                                     </div>
-                                    <span className="font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">{s.rating}</span>
+                                    <span className="inline-flex items-center gap-1 font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-200">{s.rating} <IconGlyph glyph="⭐" size={13} /></span>
                                 </div>
                             ))}
                         </div>
@@ -241,11 +386,11 @@ export default function AnalyticsDashboard() {
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
                             <div className="flex justify-between">
                                 <span className="font-bold text-slate-800">LUMIERE10 (VIP 10% OFF)</span>
-                                <span className="font-mono text-emerald-700 font-bold">Used 28 times · Sales Generated: 84,000,000 đ</span>
+                                <span className="font-mono text-emerald-700 font-bold">Used 28 times · Sales Generated: 84,000,000 VND</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="font-bold text-slate-800">AUTUMN500K (500k Voucher)</span>
-                                <span className="font-mono text-emerald-700 font-bold">Used 12 times · Sales Generated: 42,000,000 đ</span>
+                                <span className="font-mono text-emerald-700 font-bold">Used 12 times · Sales Generated: 42,000,000 VND</span>
                             </div>
                         </div>
                     </div>

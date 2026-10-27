@@ -1,12 +1,38 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+    BadgePercent,
+    BarChart3,
+    CalendarDays,
+    ChefHat,
+    CreditCard,
+    Image,
+    LayoutGrid,
+    Menu,
+    MessageSquare,
+    Newspaper,
+    Users,
+    UserRound,
+    Utensils,
+    BriefcaseBusiness,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 export default function DashboardLayout() {
     const location = useLocation();
     const navigate = useNavigate();
     const { currentUser, logout } = useAuth();
+    const confirm = useConfirm();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        const shouldLogout = await confirm({
+            title: 'Sign out of your account?',
+            message: 'You will need to sign in again to continue using the management dashboard.',
+            confirmText: 'Sign Out',
+            cancelText: 'Stay',
+            icon: 'logout',
+        });
+        if (!shouldLogout) return;
         logout();
         navigate('/login');
     };
@@ -15,33 +41,38 @@ export default function DashboardLayout() {
         {
             group: 'Executive & Reports',
             items: [
-                { path: '/dashboard/analytics', label: '📊 Business Dashboard', icon: '📊' },
+                { path: '/dashboard/analytics', label: 'Business Dashboard', icon: BarChart3 },
             ]
         },
         {
             group: 'Operations & Dining',
             items: [
-                { path: '/dashboard/reservations', label: '📅 Reservations', icon: '📅' },
-                { path: '/dashboard/tables', label: '🗺️ Table Layout', icon: '🗺️' },
-                { path: '/dashboard/orders', label: '🍽️ Orders & Dispatch', icon: '🍽️' },
-                { path: '/dashboard/kitchen', label: '🧑‍🍳 Kitchen Display (KDS)', icon: '🧑‍🍳' },
-                { path: '/dashboard/billing', label: '💳 Billing & Cashier', icon: '💳' },
+                { path: '/dashboard/reservations', label: 'Reservations', icon: CalendarDays },
+                { path: '/dashboard/tables', label: 'Table Layout', icon: LayoutGrid },
+                { path: '/dashboard/orders', label: 'Orders & Dispatch', icon: Utensils },
+                { path: '/dashboard/order-history', label: 'Order History', icon: Newspaper },
+                { path: '/dashboard/serving', label: 'Complete Serving', icon: Utensils },
+                { path: '/dashboard/kitchen', label: 'Kitchen Display (KDS)', icon: ChefHat },
+                { path: '/dashboard/billing', label: 'Billing & Cashier', icon: CreditCard },
             ]
         },
         {
             group: 'Inventory & Marketing',
             items: [
-                { path: '/dashboard/menu', label: '📖 Menu & Stock', icon: '📖' },
-                { path: '/dashboard/promotions', label: '🎟️ Promotions & Vouchers', icon: '🎟️' },
+                { path: '/dashboard/menu', label: 'Menu & Stock', icon: Menu },
+                { path: '/dashboard/promotions', label: 'Promotions & Vouchers', icon: BadgePercent },
+                { path: '/dashboard/banners', label: 'Manage Banners', icon: Image },
+                { path: '/dashboard/news', label: 'Manage News', icon: Newspaper },
             ]
         },
         {
             group: 'Workforce & Accounts',
             items: [
-                { path: '/dashboard/employees', label: '👔 Staff & Schedules', icon: '👔' },
-                { path: '/dashboard/accounts', label: '👥 Account Management', icon: '👥' },
-                { path: '/dashboard/feedback', label: '⭐ Customer Reviews', icon: '⭐' },
-                { path: '/dashboard/profile', label: '👤 My Profile', icon: '👤' },
+                { path: '/dashboard/employees', label: 'Staff & Schedules', icon: BriefcaseBusiness },
+                { path: '/dashboard/shifts', label: 'Shift Management', icon: CalendarDays },
+                { path: '/dashboard/accounts', label: 'Account Management', icon: Users },
+                { path: '/dashboard/feedback', label: 'Customer Reviews', icon: MessageSquare },
+                { path: '/dashboard/profile', label: 'My Profile', icon: UserRound },
             ]
         }
     ];
@@ -97,7 +128,7 @@ export default function DashboardLayout() {
                         to="/"
                         className="text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl border border-white/20 transition"
                     >
-                        Main Site →
+                        Main Site
                     </Link>
                 </div>
             </header>
@@ -123,7 +154,10 @@ export default function DashboardLayout() {
                                                     : 'text-slate-700 hover:bg-slate-100'
                                             }`}
                                         >
-                                            {item.label}
+                                            <span className="flex items-center gap-2.5">
+                                                <item.icon size={15} strokeWidth={1.8} aria-hidden="true" />
+                                                {item.label}
+                                            </span>
                                         </Link>
                                     );
                                 })}
