@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { mockFoods } from '../../data/mockFoods';
 import { useAuth } from '../../context/AuthContext';
 import {
     Clock3,
@@ -12,10 +11,12 @@ import {
 import IconGlyph from '../../components/common/IconGlyph';
 
 import {
+    getMenuItems,
     getCategories,
     createCategory,
     updateCategory,
     deleteCategory,
+    createMenuItem,
 } from '../../api/menuApi';
 export default function Menu() {
     const { currentUser } = useAuth();
@@ -23,7 +24,9 @@ export default function Menu() {
     const isKitchen = currentUser?.role === 'Kitchen';
 
     // State lists
-    const [foods, setFoods] = useState(mockFoods);
+    const [foods, setFoods] = useState([]);
+    const [foodsLoading, setFoodsLoading] = useState(true);
+    const [foodsError, setFoodsError] = useState('');
     const [categories, setCategories] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
     const [categoryError, setCategoryError] = useState('');
@@ -66,16 +69,49 @@ export default function Menu() {
     // New Category Name input
     const [newCatName, setNewCatName] = useState('');
 
+    // Activate / Deactivate Food
+    const handleToggleActive = (id) => {
+        setFoods((prev) =>
+            prev.map((food) => {
+                if (food.id !== id) return food;
+
+                const nextActive = !food.active;
+
+                showToast(
+                    `Dish "${food.name}" is now ${nextActive ? 'ACTIVE' : 'INACTIVE'
+                    }`
+                );
+
+                return { ...food, active: nextActive };
+            })
+        );
+    };
+
+    // Update daily quantity
     const handleSetDailyQuantity = (id, value) => {
         const quantity = Number(value);
-        if (!Number.isInteger(quantity)) return;
 
-        setFoods((prev) => prev.map((food) => {
-            if (food.id !== id) return food;
-            const dailyLeft = Math.min(food.dailyMax, Math.max(0, quantity));
-            showToast(`Updated stock for "${food.name}": ${dailyLeft} / ${food.dailyMax} portions left`);
-            return { ...food, dailyLeft };
-        }));
+        if (value === '' || !Number.isInteger(quantity) || quantity < 0) {
+            return;
+        }
+
+        setFoods((prev) =>
+            prev.map((food) => {
+                if (food.id !== id) return food;
+
+                const dailyLeft =
+                    food.dailyMax == null
+                        ? quantity
+                        : Math.min(food.dailyMax, quantity);
+
+                showToast(
+                    `Updated stock for "${food.name}": ${dailyLeft} portions left`
+                );
+
+                return { ...food, dailyLeft };
+            })
+        );
+
         setQuantityDrafts((prev) => {
             const next = { ...prev };
             delete next[id];
@@ -83,21 +119,75 @@ export default function Menu() {
         });
     };
 
-    // Create Food Submit
-    const handleCreateFoodSubmit = (e) => {
+    const handleCreateFoodSubmit = async (e) => {
         e.preventDefault();
-        const newDish = {
-            id: `f-${Date.now()}`,
-            ...foodForm,
-            rating: 5.0,
-            reviews: 1,
-            price: Number(foodForm.price),
-            dailyMax: Number(foodForm.dailyMax),
-            dailyLeft: Number(foodForm.dailyLeft),
-        };
-        setFoods([newDish, ...foods]);
-        setIsCreateFoodModalOpen(false);
-        showToast(`Created new dish "${newDish.name}" successfully`);
+
+        try {
+            const selectedCategory = categories.find(
+                (category) =>
+                    category.name === foodForm.category ||
+                    category.categoryName === foodForm.category
+            );
+
+            const categoryID = Number(
+                selectedCategory?.categoryID ??
+                selectedCategory?.CategoryID ??
+                selectedCategory?.id
+            );
+
+            if (!Number.isInteger(categoryID) || categoryID <= 0) {
+                showToast('Please select a valid category.');
+                return;
+            }
+
+            if (!foodForm.name.trim()) {
+                showToast('Food name is required.');
+                return;
+            }
+
+            if (Number(foodForm.price) < 0) {
+                showToast('Price cannot be negative.');
+                return;
+            }
+
+            await createMenuItem({
+                categoryID: categoryID,
+                name: foodForm.name,
+                price: foodForm.price,
+                description: foodForm.description,
+                image: foodForm.image,
+                active: foodForm.active,
+            });
+
+            const data = await getMenuItems();
+
+            const updatedFoods = data.map((item) => {
+                const isActive = Boolean(item.isActive ?? item.IsActive);
+
+                return {
+                    id: item.menuItemID ?? item.MenuItemID,
+                    categoryId: item.categoryID ?? item.CategoryID,
+                    name: item.itemName ?? item.ItemName ?? '',
+                    category: item.categoryName ?? item.CategoryName ?? '',
+                    price: Number(item.price ?? item.Price ?? 0),
+                    image: item.imageUrl ?? item.ImageUrl ?? '',
+                    badge: isActive ? 'MENU ITEM' : 'INACTIVE',
+                    description: item.description ?? item.Description ?? '',
+                    dailyMax: null,
+                    dailyLeft: null,
+                    prepTime: '—',
+                    calories: '—',
+                    active: isActive,
+                };
+            });
+
+            setFoods(updatedFoods);
+
+            setIsCreateFoodModalOpen(false);
+            showToast('Menu item created successfully.');
+        } catch (error) {
+            showToast(error.message || 'Failed to create menu item.');
+        }
     };
 
     // Update Food Submit
@@ -138,7 +228,7 @@ export default function Menu() {
 
         if (categories.some(
             (category) =>
-                category.name.toLowerCase() === trimmed.toLowerCase()
+                String(category.name ?? '').toLowerCase() === trimmed.toLowerCase()
         )) {
             showToast(`Category "${trimmed}" already exists.`);
             return;
@@ -187,7 +277,7 @@ export default function Menu() {
         const duplicate = categories.some(
             (category) =>
                 category.id !== editingCategory.id &&
-                category.name.toLowerCase() === trimmed.toLowerCase() &&
+                String(category.name ?? '').toLowerCase() === trimmed.toLowerCase() &&
                 category.name !== 'All Dishes'
         );
 
@@ -270,6 +360,59 @@ export default function Menu() {
         });
     };
 
+    // Load food list from the backend API
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadFoods() {
+            setFoodsLoading(true);
+            setFoodsError('');
+
+            try {
+                const data = await getMenuItems();
+
+                if (cancelled) return;
+
+                const mappedFoods = data.map((item) => {
+                    const isActive = Boolean(item.isActive ?? item.IsActive);
+
+                    return {
+                        id: item.menuItemID ?? item.MenuItemID,
+                        categoryId: item.categoryID ?? item.CategoryID,
+                        name: item.itemName ?? item.ItemName ?? '',
+                        category: item.categoryName ?? item.CategoryName ?? '',
+                        price: Number(item.price ?? item.Price ?? 0),
+                        image: item.imageUrl ?? item.ImageUrl ?? '',
+                        badge: isActive ? 'MENU ITEM' : 'INACTIVE',
+                        description: item.description ?? item.Description ?? '',
+                        // Daily inventory is not part of the MenuItems API yet.
+                        dailyMax: null,
+                        dailyLeft: null,
+                        prepTime: '—',
+                        calories: '—',
+                        active: isActive,
+                    };
+                });
+
+                setFoods(mappedFoods);
+            } catch (error) {
+                if (!cancelled) {
+                    setFoodsError(error.message || 'Unable to load menu items.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setFoodsLoading(false);
+                }
+            }
+        }
+
+        loadFoods();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
+
     useEffect(() => {
         let cancelled = false;
 
@@ -314,15 +457,17 @@ export default function Menu() {
     // Filtered Food List
     const filteredFoods = foods.filter((food) => {
         const matchesSearch =
-            food.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            food.description.toLowerCase().includes(searchTerm.toLowerCase());
+            String(food.name ?? '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            String(food.description ?? '').toLowerCase().includes(searchTerm.toLowerCase());
         const matchesCategory =
             selectedCategory === 'All Dishes' || food.category === selectedCategory;
         const matchesStatus =
             statusFilter === 'All' ||
             (statusFilter === 'Active' && food.active) ||
             (statusFilter === 'Inactive' && !food.active) ||
-            (statusFilter === 'LowStock' && food.dailyLeft <= 5);
+            (statusFilter === 'LowStock' &&
+                food.dailyLeft != null &&
+                food.dailyLeft <= 5);
 
         return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -396,6 +541,7 @@ export default function Menu() {
                 {/* Search Bar */}
                 <div className="w-full lg:w-96 relative flex items-center">
                     <Search size={18} className="absolute left-4 text-slate-400" aria-hidden="true" />
+                    <span className="absolute left-4 text-slate-400"></span>
                     <input
                         type="text"
                         placeholder="Search gourmet dishes, ingredients, hotpot, BBQ..."
@@ -443,160 +589,210 @@ export default function Menu() {
                         className="px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 border bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-xs"
                     >
                         <Plus size={16} aria-hidden="true" />
+                        <span></span>
                         <span>Manage Categories</span>
                     </button>
                 )}
             </div>
 
-            {/* FOOD LIST GRID */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {filteredFoods.length === 0 ? (
-                    <div className="col-span-full py-16 text-center bg-white rounded-3xl border border-dashed border-slate-300">
-                        <Utensils size={36} className="mb-2" aria-hidden="true" />
-                        <p className="font-serif font-bold text-slate-700 text-lg">No dishes found matching your criteria</p>
-                        <p className="text-xs text-slate-400 mt-1">Try resetting search keywords or category filters.</p>
-                    </div>
-                ) : (
-                    filteredFoods.map((food) => (
-                        <div
-                            key={food.id}
-                            className={`bg-white rounded-3xl border transition-all duration-300 shadow-md hover:shadow-2xl hover:-translate-y-1 overflow-hidden flex flex-col justify-between group ${!food.active ? 'opacity-60 bg-slate-50 border-slate-300' : 'border-stone-200/80 hover:border-[#DCC8A8]'
-                                }`}
-                        >
-                            <div>
-                                {/* Food Image & Badges */}
-                                <div
-                                    onClick={() => setViewingFood(food)}
-                                    className="relative h-48 bg-slate-900 overflow-hidden cursor-pointer"
-                                >
-                                    <img
-                                        src={food.image}
-                                        alt={food.name}
-                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 brightness-90 group-hover:brightness-100"
-                                    />
-                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
 
-                                    {/* Top Left Badge */}
-                                    <div className="absolute top-3 left-3">
-                                        <span className="bg-[#081126]/90 text-[#DCC8A8] border border-[#DCC8A8]/40 font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-lg backdrop-blur-md shadow-md">
-                                            {food.badge}
-                                        </span>
-                                    </div>
+            {/* FOOD LIST TABLE */}
+            {foodsLoading && (
+                <div className="py-12 text-center bg-white rounded-2xl border border-stone-200">
+                    <p className="font-bold text-slate-700">
+                        Loading menu items...
+                    </p>
+                </div>
+            )}
 
-                                    {/* Top Right Active Status Badge */}
-                                    <div className="absolute top-3 right-3">
-                                        <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg border backdrop-blur-md shadow-sm ${food.active
-                                            ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
-                                            : 'bg-rose-950/80 text-rose-300 border-rose-500/40'
-                                            }`}>
-                                            {food.active ? '● Active' : '✕ Inactive'}
-                                        </span>
-                                    </div>
+            {foodsError && (
+                <div className="py-4 px-5 text-sm text-rose-700 bg-rose-50 rounded-2xl border border-rose-200">
+                    <p className="font-bold">
+                        Unable to load menu items from the backend.
+                    </p>
+                    <p className="mt-1">{foodsError}</p>
+                </div>
+            )}
 
-                                    {/* Category pill at bottom image */}
-                                    <div className="absolute bottom-3 left-3 text-[11px] text-slate-200 font-mono">
-                                        {food.category}
-                                    </div>
-                                </div>
-
-                                {/* Content Details */}
-                                <div className="p-4">
-                                    <div className="flex justify-between items-start">
-                                        <h3
-                                            onClick={() => setViewingFood(food)}
-                                            className="font-serif font-bold text-slate-900 text-base line-clamp-1 group-hover:text-amber-800 transition-colors cursor-pointer"
-                                        >
-                                            {food.name}
-                                        </h3>
-                                    </div>
-
-                                    <p className="text-xs text-slate-500 line-clamp-2 mt-1 font-normal leading-relaxed">
-                                        {food.description}
-                                    </p>
-
-                                    <div className="mt-3 flex justify-between items-baseline">
-                                        <span className="text-lg font-black text-[#081126]">
-                                            {food.price.toLocaleString('en-US')} ₫
-                                        </span>
-                                        <span className="text-[11px] text-slate-400 font-medium">
-                                            <Clock3 size={13} aria-hidden="true" /> {food.prepTime}
-                                        </span>
-                                    </div>
-
-                                    {/* DAILY PORTION TRACKER */}
-                                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
-                                        <div className="text-xs">
-                                            <span className="text-slate-400 font-medium block text-[10px] uppercase">Today's portions remaining</span>
-                                            {(isManager || isKitchen) ? (
-                                                <div className="flex items-center gap-1.5 mt-1">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max={food.dailyMax}
-                                                        step="1"
-                                                        inputMode="numeric"
-                                                        aria-label={`Portions remaining for ${food.name}`}
-                                                        value={quantityDrafts[food.id] ?? food.dailyLeft}
-                                                        onChange={(e) => setQuantityDrafts((prev) => ({ ...prev, [food.id]: e.target.value }))}
-                                                        onBlur={(e) => {
-                                                            if (e.target.value !== '') handleSetDailyQuantity(food.id, e.target.value);
-                                                            else setQuantityDrafts((prev) => {
-                                                                const next = { ...prev };
-                                                                delete next[food.id];
-                                                                return next;
-                                                            });
-                                                        }}
-                                                        className={`w-16 rounded-md border border-slate-200 bg-white px-2 py-1 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-[#DCC8A8] ${food.dailyLeft === 0 ? 'text-rose-600' :
-                                                            food.dailyLeft <= 5 ? 'text-amber-600' : 'text-emerald-700'
-                                                            }`}
-                                                    />
-                                                    <span className="text-xs text-slate-500">/ {food.dailyMax} portions</span>
-                                                </div>
-                                            ) : (
-                                                <span className={`font-bold ${food.dailyLeft === 0 ? 'text-rose-600' :
-                                                    food.dailyLeft <= 5 ? 'text-amber-600' : 'text-emerald-700'
-                                                    }`}>
-                                                    {food.dailyLeft} / {food.dailyMax} portions
-                                                </span>
-                                            )}
-                                        </div>
-
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* CARD ACTION FOOTER */}
-                            <div className="p-4 pt-0 space-y-2">
-                                {/* Manager Action Toolbar */}
-                                {isManager && (
-                                    <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
-                                        <button
-                                            onClick={() => setEditingFood({ ...food })}
-                                            className="flex-1 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 text-[11px] font-bold uppercase rounded-xl transition cursor-pointer"
-                                        >
-                                            Edit
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteFood(food.id, food.name)}
-                                            className="px-2.5 py-1.5 text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer font-bold text-xs"
-                                            title="Delete dish"
-                                        >
-                                            <Trash2 size={14} aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                <button
-                                    onClick={() => setViewingFood(food)}
-                                    className="w-full py-2.5 bg-[#081126] text-[#DCC8A8] font-bold text-xs uppercase tracking-wider rounded-xl hover:bg-slate-800 transition cursor-pointer shadow-sm"
-                                >
-                                    View Details
-                                </button>
-                            </div>
+            {!foodsLoading && !foodsError && (
+                <div className="bg-white rounded-2xl border border-stone-200 shadow-md overflow-hidden">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 border-b border-slate-200">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-900">
+                                Menu Items
+                            </h2>
+                            <p className="text-sm text-slate-500 mt-1">
+                                Total: {filteredFoods.length} dishes
+                            </p>
                         </div>
-                    ))
-                )}
-            </div>
+
+                        {isManager && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setFoodForm({
+                                        name: '',
+                                        category: categories.find(
+                                            (c) => c.name !== 'All Dishes'
+                                        )?.name || '',
+                                        price: 350000,
+                                        image: '',
+                                        badge: 'NEW DISH',
+                                        description: '',
+                                        dailyMax: 30,
+                                        dailyLeft: 30,
+                                        prepTime: '15 mins',
+                                        calories: '500 kcal',
+                                        active: true,
+                                    });
+                                    setIsCreateFoodModalOpen(true);
+                                }}
+                                className="px-4 py-2.5 rounded-xl bg-[#081126] text-[#DCC8A8] text-sm font-bold hover:bg-slate-800"
+                            >
+                                <Plus size={16} className="inline mr-2" />
+                                Add New Dish
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500 uppercase text-xs">
+                                <tr>
+                                    <th className="px-5 py-4">Dish Name</th>
+                                    <th className="px-5 py-4">Category</th>
+                                    <th className="px-5 py-4 text-right">Price</th>
+                                    <th className="px-5 py-4 text-center">Status</th>
+                                    <th className="px-5 py-4 text-center">Daily Stock</th>
+                                    <th className="px-5 py-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredFoods.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={6}
+                                            className="px-5 py-12 text-center text-slate-500"
+                                        >
+                                            <Utensils
+                                                size={30}
+                                                className="mx-auto mb-2 text-slate-400"
+                                            />
+                                            No dishes found matching your criteria.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredFoods.map((food) => (
+                                        <tr
+                                            key={food.id}
+                                            className={`hover:bg-amber-50/40 transition ${!food.active ? 'bg-slate-50 opacity-70' : ''
+                                                }`}
+                                        >
+                                            <td className="px-5 py-4 min-w-[220px]">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setViewingFood(food)}
+                                                    className="font-bold text-slate-900 hover:text-amber-800 text-left"
+                                                >
+                                                    {food.name}
+                                                </button>
+                                                <p className="text-xs text-slate-500 mt-1 max-w-xs truncate">
+                                                    {food.description || 'No description provided.'}
+                                                </p>
+                                            </td>
+
+                                            <td className="px-5 py-4 text-slate-600 whitespace-nowrap">
+                                                {food.category || 'Uncategorized'}
+                                            </td>
+
+                                            <td className="px-5 py-4 text-right font-bold text-slate-900 whitespace-nowrap">
+                                                {Number(food.price || 0).toLocaleString('vi-VN')} ₫
+                                            </td>
+
+                                            <td className="px-5 py-4 text-center">
+                                                <span
+                                                    className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${food.active
+                                                            ? 'bg-emerald-100 text-emerald-700'
+                                                            : 'bg-rose-100 text-rose-700'
+                                                        }`}
+                                                >
+                                                    {food.active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+
+                                            <td className="px-5 py-4 text-center whitespace-nowrap">
+                                                {food.dailyLeft != null &&
+                                                    food.dailyMax != null ? (
+                                                    <span
+                                                        className={`font-semibold ${food.dailyLeft === 0
+                                                                ? 'text-rose-600'
+                                                                : food.dailyLeft <= 5
+                                                                    ? 'text-amber-600'
+                                                                    : 'text-emerald-700'
+                                                            }`}
+                                                    >
+                                                        {food.dailyLeft} / {food.dailyMax}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400">
+                                                        Not available
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            <td className="px-5 py-4">
+                                                <div className="flex justify-end items-center gap-2 whitespace-nowrap">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setViewingFood(food)}
+                                                        className="px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold"
+                                                    >
+                                                        View
+                                                    </button>
+
+                                                    {isManager && (
+                                                        <>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleActive(food.id)}
+                                                                className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${food.active
+                                                                        ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                                                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                                                    }`}
+                                                            >
+                                                                {food.active ? 'Hide' : 'Activate'}
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingFood({ ...food })}
+                                                                className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-xs font-semibold"
+                                                            >
+                                                                Edit
+                                                            </button>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteFood(food.id, food.name)}
+                                                                title="Delete dish"
+                                                                className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
 
             {/* VIEW FOOD DETAIL MODAL */}
             {viewingFood && (
@@ -604,7 +800,7 @@ export default function Menu() {
                     <div className="bg-white rounded-3xl max-w-xl w-full overflow-hidden shadow-2xl border border-stone-200 animate-fadeIn">
                         <div className="relative h-64 bg-slate-900">
                             <img
-                                src={viewingFood.image}
+                                src={viewingFood.image || 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=800&q=80'}
                                 alt={viewingFood.name}
                                 className="w-full h-full object-cover"
                             />
@@ -612,7 +808,7 @@ export default function Menu() {
                                 onClick={() => setViewingFood(null)}
                                 className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/60 text-white font-bold flex items-center justify-center hover:bg-black cursor-pointer"
                             >
-                                ✕
+                                ×
                             </button>
                             <div className="absolute bottom-4 left-4">
                                 <span className="bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 font-extrabold text-xs uppercase px-3 py-1 rounded-xl">
@@ -628,7 +824,7 @@ export default function Menu() {
                                     <h2 className="font-serif text-2xl font-bold text-slate-900">{viewingFood.name}</h2>
                                 </div>
                                 <span className="text-2xl font-black text-[#081126]">
-                                    {viewingFood.price.toLocaleString('en-US')} ₫
+                                    {Number(viewingFood.price || 0).toLocaleString('vi-VN')} ₫
                                 </span>
                             </div>
 
@@ -685,7 +881,7 @@ export default function Menu() {
                                 onClick={() => setIsCreateFoodModalOpen(false)}
                                 className="text-slate-400 hover:text-slate-700 font-bold"
                             >
-                                ✕
+                                ×
                             </button>
                         </div>
 
@@ -774,20 +970,20 @@ export default function Menu() {
                                 ></textarea>
                             </div>
 
-                            <label className={`flex items-center justify-between gap-4 rounded-xl border p-3.5 cursor-pointer transition ${editingFood.active
+                            <label className={`flex items-center justify-between gap-4 rounded-xl border p-3.5 cursor-pointer transition ${foodForm.active
                                 ? 'bg-emerald-50 border-emerald-200'
                                 : 'bg-slate-50 border-slate-200'
                                 }`}>
                                 <span>
                                     <span className="block text-xs font-bold text-slate-800">Dish availability</span>
                                     <span className="block text-[11px] text-slate-500 mt-0.5">
-                                        {editingFood.active ? 'Visible and available to order' : 'Hidden from the customer menu'}
+                                        {foodForm.active ? 'Visible and available to order' : 'Hidden from the customer menu'}
                                     </span>
                                 </span>
                                 <input
                                     type="checkbox"
-                                    checked={Boolean(editingFood.active)}
-                                    onChange={(e) => setEditingFood({ ...editingFood, active: e.target.checked })}
+                                    checked={Boolean(foodForm.active)}
+                                    onChange={(e) => setFoodForm({ ...foodForm, active: e.target.checked })}
                                     className="h-5 w-5 shrink-0 accent-emerald-700"
                                 />
                             </label>
@@ -824,7 +1020,7 @@ export default function Menu() {
                                 onClick={() => setEditingFood(null)}
                                 className="text-slate-400 hover:text-slate-700 font-bold"
                             >
-                                ✕
+                                ×
                             </button>
                         </div>
 
@@ -929,7 +1125,7 @@ export default function Menu() {
                                 onClick={() => setIsCategoryModalOpen(false)}
                                 className="text-slate-400 hover:text-slate-700 font-bold"
                             >
-                                ✕
+                                ×
                             </button>
                         </div>
 
@@ -1037,7 +1233,7 @@ export default function Menu() {
                                                         className="text-rose-600 hover:text-rose-800 font-bold px-2 py-1 hover:bg-rose-50 rounded-lg disabled:opacity-50"
                                                         title="Delete Category"
                                                     >
-                                                        🗑 Delete
+                                                        Delete
                                                     </button>
                                                 </div>
                                             )}
