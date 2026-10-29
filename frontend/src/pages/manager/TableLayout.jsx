@@ -3,6 +3,7 @@ import { INITIAL_AREAS, INITIAL_TABLES, STATUS_STYLES, TABLE_STATUSES } from '..
 import { useAuth } from '../../context/AuthContext';
 import { getAreas, createArea, updateArea, deleteArea } from '../../api/areaApi';
 import { getTables, createTable, updateTable, deleteTable } from '../../api/tableApi';
+import IconGlyph from "../../components/common/IconGlyph";
 
 /* ─── Refined Status Badge ─── */
 function StatusBadge({ status, small = false }) {
