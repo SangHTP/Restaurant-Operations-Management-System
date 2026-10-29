@@ -19,6 +19,9 @@ namespace backend.database
         public DbSet<Table> Tables { get; set; }
         public DbSet<Bill> Bills { get; set; }
         public DbSet<DailyInventory> DailyInventories { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderDetail> OrderDetails { get; set; }
+        public DbSet<OrderTable> OrderTables { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +53,40 @@ namespace backend.database
 
             modelBuilder.Entity<OrderTable>()
                 .HasKey(ot => new { ot.OrderID, ot.TableID });
+
+            modelBuilder.Entity<OrderTable>()
+                .HasOne(ot => ot.Order)
+                .WithMany(o => o.OrderTables)
+                .HasForeignKey(ot => ot.OrderID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrderTable>()
+                .HasOne(ot => ot.Table)
+                .WithMany()
+                .HasForeignKey(ot => ot.TableID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Order>()
+                .HasMany(o => o.OrderDetails)
+                .WithOne(d => d.Order)
+                .HasForeignKey(d => d.OrderID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrderDetail>()
+                .HasOne(d => d.MenuItem)
+                .WithMany()
+                .HasForeignKey(d => d.MenuItemID)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Order>()
+                .HasOne(o => o.Bill)
+                .WithOne(b => b.Order)
+                .HasForeignKey<Bill>(b => b.OrderID)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrderDetail>()
+                .ToTable("OrderDetails", table =>
+                    table.HasTrigger("TRG_Deduct_Inventory"));
         }
     }
 }

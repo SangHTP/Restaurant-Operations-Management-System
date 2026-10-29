@@ -12,7 +12,7 @@ public class OrderDetail
 
     public int OrderID { get; set; }
 
-    [ForeignKey("OrderID")]
+    [ForeignKey(nameof(OrderID))]
     public Order? Order { get; set; }
 
     public int MenuItemID { get; set; }
