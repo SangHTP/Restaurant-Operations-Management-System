@@ -1,6 +1,7 @@
 ﻿
 using backend.Models;
 using Microsoft.EntityFrameworkCore;
+using RestaurantAPI.Models;
 
 namespace backend.database
 {
@@ -16,6 +17,7 @@ namespace backend.database
         public DbSet<MenuItem> MenuItems { get; set; }
         public DbSet<Area> Areas { get; set; }
         public DbSet<Table> Tables { get; set; }
+        public DbSet<Bill> Bills { get; set; }
         public DbSet<DailyInventory> DailyInventories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -45,6 +47,9 @@ namespace backend.database
                 .WithMany()
                 .HasForeignKey(item => item.CategoryID)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrderTable>()
+                .HasKey(ot => new { ot.OrderID, ot.TableID });
         }
     }
 }
