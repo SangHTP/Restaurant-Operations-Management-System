@@ -14,5 +14,10 @@ namespace backend.Models
         public int MenuItemID { get; set; }
 
         public int CategoryID { get; set; }
+        public bool IsActive { get; set; }
+        public string ItemName { get; internal set; }
+        public virtual Category? Category { get; set; }
+        public string ImageUrl { get; internal set; }
+        public decimal Price { get; internal set; }
     }
 }
