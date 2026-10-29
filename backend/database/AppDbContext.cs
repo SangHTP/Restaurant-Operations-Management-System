@@ -50,7 +50,7 @@ namespace backend.database
                 .WithMany()
                 .HasForeignKey(item => item.CategoryID)
                 .OnDelete(DeleteBehavior.Restrict);
-            // Order - OrderTable
+
             modelBuilder.Entity<OrderTable>()
                 .HasKey(ot => new { ot.OrderID, ot.TableID });
 
@@ -60,33 +60,30 @@ namespace backend.database
                 .HasForeignKey(ot => ot.OrderID)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // Table - OrderTable
             modelBuilder.Entity<OrderTable>()
                 .HasOne(ot => ot.Table)
                 .WithMany()
                 .HasForeignKey(ot => ot.TableID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Order - OrderDetail
             modelBuilder.Entity<Order>()
                 .HasMany(o => o.OrderDetails)
                 .WithOne(d => d.Order)
                 .HasForeignKey(d => d.OrderID)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // OrderDetail - MenuItem
             modelBuilder.Entity<OrderDetail>()
                 .HasOne(d => d.MenuItem)
                 .WithMany()
                 .HasForeignKey(d => d.MenuItemID)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            // Order - Bill (one-to-one)
             modelBuilder.Entity<Order>()
                 .HasOne(o => o.Bill)
                 .WithOne(b => b.Order)
                 .HasForeignKey<Bill>(b => b.OrderID)
                 .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<OrderDetail>()
                 .ToTable("OrderDetails", table =>
                     table.HasTrigger("TRG_Deduct_Inventory"));
