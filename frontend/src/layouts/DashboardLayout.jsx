@@ -59,10 +59,11 @@ export default function DashboardLayout() {
         {
             group: 'Inventory & Marketing',
             items: [
-                { path: '/dashboard/menu', label: 'Menu & Stock', icon: Menu },
-                { path: '/dashboard/promotions', label: 'Promotions & Vouchers', icon: BadgePercent },
+                { path: '/dashboard/menu', label: '📖 Menu & Stock', icon: '📖' },
+                { path: '/dashboard/promotions', label: '🎟️ Promotions & Vouchers', icon: '🎟️' },
                 { path: '/dashboard/banners', label: 'Manage Banners', icon: Image },
                 { path: '/dashboard/news', label: 'Manage News', icon: Newspaper },
+                { path: '/dashboard/daily-inventory', label: '🌞 Daily Food Quantity', icon: '🌞' },
             ]
         },
         {
@@ -155,7 +156,21 @@ export default function DashboardLayout() {
                                             }`}
                                         >
                                             <span className="flex items-center gap-2.5">
-                                                <item.icon size={15} strokeWidth={1.8} aria-hidden="true" />
+                                                {typeof item.icon === 'string' ? (
+                                                    <span
+                                                        className="inline-flex items-center justify-center w-[15px] h-[15px] shrink-0"
+                                                        aria-hidden="true"
+                                                    >
+                                                        {item.icon}
+                                                    </span>
+                                                ) : (
+                                                    <item.icon
+                                                        size={15}
+                                                        strokeWidth={1.8}
+                                                        aria-hidden="true"
+                                                    />
+                                                )}
+
                                                 {item.label}
                                             </span>
                                         </Link>
