@@ -4,7 +4,9 @@ GO
 USE [RestaurantDB_Final];
 GO
 
--- 1. Bảng Khu vực (Areas) - Đã thêm IsDeleted
+-- ============================================================
+-- 1. Bảng Khu vực (Areas)
+-- ============================================================
 CREATE TABLE [dbo].[Areas](
 	[AreaID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[AreaName] [nvarchar](100) NOT NULL,
@@ -13,14 +15,18 @@ CREATE TABLE [dbo].[Areas](
 );
 GO
 
+-- ============================================================
 -- 2. Bảng Danh mục món ăn (Categories)
+-- ============================================================
 CREATE TABLE [dbo].[Categories](
 	[CategoryID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[CategoryName] [nvarchar](100) NOT NULL UNIQUE
 );
 GO
 
+-- ============================================================
 -- 3. Bảng Phòng ban (Departments)
+-- ============================================================
 CREATE TABLE [dbo].[Departments](
 	[DepartmentID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[DepartmentName] [nvarchar](100) NOT NULL UNIQUE,
@@ -28,7 +34,9 @@ CREATE TABLE [dbo].[Departments](
 );
 GO
 
--- 4. Bảng Khuyến mãi (Promotions) - Đã thêm Count
+-- ============================================================
+-- 4. Bảng Khuyến mãi (Promotions)
+-- ============================================================
 CREATE TABLE [dbo].[Promotions](
 	[PromotionID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[Code] [varchar](50) NOT NULL UNIQUE,
@@ -43,7 +51,9 @@ CREATE TABLE [dbo].[Promotions](
 );
 GO
 
+-- ============================================================
 -- 5. Bảng Vai trò (Roles)
+-- ============================================================
 CREATE TABLE [dbo].[Roles](
 	[RoleID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[RoleName] [nvarchar](50) NOT NULL UNIQUE,
@@ -51,7 +61,9 @@ CREATE TABLE [dbo].[Roles](
 );
 GO
 
+-- ============================================================
 -- 6. Bảng Ca làm việc (Shifts)
+-- ============================================================
 CREATE TABLE [dbo].[Shifts](
 	[ShiftID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[ShiftName] [nvarchar](50) NOT NULL,
@@ -60,7 +72,9 @@ CREATE TABLE [dbo].[Shifts](
 );
 GO
 
+-- ============================================================
 -- 7. Bảng Khách hàng (Customers)
+-- ============================================================
 CREATE TABLE [dbo].[Customers](
 	[CustomerID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[FullName] [nvarchar](100) NOT NULL,
@@ -71,18 +85,22 @@ CREATE TABLE [dbo].[Customers](
 );
 GO
 
--- 8. Bảng Bàn ăn (Tables) - Đã thêm IsDeleted và BỎ ràng buộc CHECK trên cột Status
+-- ============================================================
+-- 8. Bảng Bàn ăn (Tables)
+-- ============================================================
 CREATE TABLE [dbo].[Tables](
 	[TableID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[AreaID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Areas] ([AreaID]),
 	[TableName] [nvarchar](50) NOT NULL,
-	[Capacity] [int] NOT NULL CHECK ([Capacity]>(0)),
+	[Capacity] [int] NOT NULL CHECK ([Capacity] > (0)),
 	[Status] [nvarchar](50) DEFAULT (N'Trống'),
 	[IsDeleted] [bit] NOT NULL DEFAULT ((0))
 );
 GO
 
+-- ============================================================
 -- 9. Bảng Nhân viên (Employees)
+-- ============================================================
 CREATE TABLE [dbo].[Employees](
 	[EmployeeID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[RoleID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Roles] ([RoleID]),
@@ -93,7 +111,10 @@ CREATE TABLE [dbo].[Employees](
 	[DepartmentID] [int] NULL FOREIGN KEY REFERENCES [dbo].[Departments] ([DepartmentID])
 );
 GO
+
+-- ============================================================
 -- 10. Bảng Tài khoản đăng nhập (Accounts)
+-- ============================================================
 CREATE TABLE [dbo].[Accounts](
 	[AccountID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[EmployeeID] [int] NOT NULL UNIQUE FOREIGN KEY REFERENCES [dbo].[Employees] ([EmployeeID]),
@@ -103,7 +124,9 @@ CREATE TABLE [dbo].[Accounts](
 );
 GO
 
+-- ============================================================
 -- 11. Bảng Nhật ký hoạt động (ActionLogs)
+-- ============================================================
 CREATE TABLE [dbo].[ActionLogs](
 	[LogID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[EmployeeID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Employees] ([EmployeeID]),
@@ -115,7 +138,9 @@ CREATE TABLE [dbo].[ActionLogs](
 );
 GO
 
+-- ============================================================
 -- 12. Bảng Phân công ca làm việc (Assignments)
+-- ============================================================
 CREATE TABLE [dbo].[Assignments](
 	[AssignmentID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[EmployeeID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Employees] ([EmployeeID]),
@@ -125,30 +150,36 @@ CREATE TABLE [dbo].[Assignments](
 );
 GO
 
+-- ============================================================
 -- 13. Bảng Món ăn / Đồ uống (MenuItems)
+-- ============================================================
 CREATE TABLE [dbo].[MenuItems](
 	[MenuItemID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[CategoryID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Categories] ([CategoryID]),
 	[ItemName] [nvarchar](150) NOT NULL,
-	[Price] [decimal](18, 0) NOT NULL CHECK ([Price]>=(0)),
+	[Price] [decimal](18, 0) NOT NULL CHECK ([Price] >= (0)),
 	[Description] [nvarchar](500) NULL,
 	[ImageUrl] [varchar](255) NULL,
 	[IsActive] [bit] DEFAULT ((1))
 );
 GO
 
+-- ============================================================
 -- 14. Bảng Tồn kho hàng ngày theo món (DailyInventories)
+-- ============================================================
 CREATE TABLE [dbo].[DailyInventories](
 	[InventoryID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[MenuItemID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[MenuItems] ([MenuItemID]),
 	[Date] [date] NOT NULL,
-	[InitialQuantity] [int] NOT NULL CHECK ([InitialQuantity]>=(0)),
-	[RemainingQuantity] [int] NOT NULL CHECK ([RemainingQuantity]>=(0)),
+	[InitialQuantity] [int] NOT NULL CHECK ([InitialQuantity] >= (0)),
+	[RemainingQuantity] [int] NOT NULL CHECK ([RemainingQuantity] >= (0)),
 	UNIQUE ([MenuItemID], [Date])
 );
 GO
 
+-- ============================================================
 -- 15. Bảng Hóa đơn gọi món / Đơn hàng (Orders)
+-- ============================================================
 CREATE TABLE [dbo].[Orders](
 	[OrderID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[EmployeeID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Employees] ([EmployeeID]),
@@ -157,20 +188,24 @@ CREATE TABLE [dbo].[Orders](
 );
 GO
 
+-- ============================================================
 -- 16. Bảng Chi tiết gọi món (OrderDetails)
+-- ============================================================
 CREATE TABLE [dbo].[OrderDetails](
 	[OrderDetailID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[OrderID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Orders] ([OrderID]),
 	[MenuItemID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[MenuItems] ([MenuItemID]),
-	[Quantity] [int] NOT NULL CHECK ([Quantity]>(0)),
+	[Quantity] [int] NOT NULL CHECK ([Quantity] > (0)),
 	[UnitPrice] [decimal](18, 0) NOT NULL,
 	[Note] [nvarchar](255) NULL,
-[Status] [nvarchar](50) DEFAULT (N'Chờ chế biến') CHECK ([Status] IN (N'Đã hủy', N'Đã phục vụ', N'Đã xong', N'Đang chế biến', N'Chờ chế biến')),
+	[Status] [nvarchar](50) DEFAULT (N'Chờ chế biến') CHECK ([Status] IN (N'Đã hủy', N'Đã phục vụ', N'Đã xong', N'Đang chế biến', N'Chờ chế biến')),
 	[OrderTime] [datetime] DEFAULT (getdate())
 );
 GO
 
+-- ============================================================
 -- 17. Bảng Bàn theo đơn (OrderTables)
+-- ============================================================
 CREATE TABLE [dbo].[OrderTables](
 	[OrderID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Orders] ([OrderID]),
 	[TableID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Tables] ([TableID]),
@@ -178,7 +213,9 @@ CREATE TABLE [dbo].[OrderTables](
 );
 GO
 
+-- ============================================================
 -- 18. Bảng Thanh toán tính tiền (Bills)
+-- ============================================================
 CREATE TABLE [dbo].[Bills](
 	[BillID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[OrderID] [int] NOT NULL UNIQUE FOREIGN KEY REFERENCES [dbo].[Orders] ([OrderID]),
@@ -192,7 +229,9 @@ CREATE TABLE [dbo].[Bills](
 );
 GO
 
+-- ============================================================
 -- 19. Bảng Giao dịch thanh toán (Payments)
+-- ============================================================
 CREATE TABLE [dbo].[Payments](
 	[PaymentID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[BillID] [int] NOT NULL UNIQUE FOREIGN KEY REFERENCES [dbo].[Bills] ([BillID]),
@@ -204,7 +243,9 @@ CREATE TABLE [dbo].[Payments](
 );
 GO
 
+-- ============================================================
 -- 20. Bảng Đặt bàn (Reservations)
+-- ============================================================
 CREATE TABLE [dbo].[Reservations](
 	[ReservationID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[TableID] [int] NULL FOREIGN KEY REFERENCES [dbo].[Tables] ([TableID]),
@@ -213,26 +254,57 @@ CREATE TABLE [dbo].[Reservations](
 	[CustomerName] [nvarchar](100) NOT NULL,
 	[CustomerPhone] [varchar](15) NOT NULL,
 	[ReservationTime] [datetime] NOT NULL,
-	[NumberOfGuests] [int] NOT NULL CHECK ([NumberOfGuests]>(0)),
+	[NumberOfGuests] [int] NOT NULL CHECK ([NumberOfGuests] > (0)),
 	[Status] [nvarchar](50) DEFAULT (N'Chờ xác nhận') CHECK ([Status] IN (N'Đã hủy', N'Đã đến', N'Đã xác nhận', N'Chờ xác nhận')),
 	[CreatedAt] [datetime] DEFAULT (getdate())
 );
 GO
 
--- 21. Bảng Đánh giá & phản hồi (Feedbacks)
+-- ============================================================
+-- 21. Bảng Đánh giá Đặt bàn (ReservationFeedbacks)
+-- ============================================================
+CREATE TABLE [dbo].[ReservationFeedbacks](
+	[ReservationFeedbackID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	[ReservationID] [int] NOT NULL UNIQUE FOREIGN KEY REFERENCES [dbo].[Reservations]([ReservationID]) ON DELETE CASCADE,
+	[CustomerID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Customers]([CustomerID]),
+	[Rating] [tinyint] NOT NULL CHECK ([Rating] BETWEEN 1 AND 5),
+	[Content] [nvarchar](1000) NULL,
+	[CreatedAt] [datetime] NOT NULL DEFAULT (getdate())
+);
+GO
+
+-- ============================================================
+-- 22. Bảng Đánh giá & phản hồi Hóa đơn (Feedbacks) - Đã tích hợp UC-58
+-- ============================================================
 CREATE TABLE [dbo].[Feedbacks](
 	[FeedbackID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[BillID] [int] NOT NULL UNIQUE FOREIGN KEY REFERENCES [dbo].[Bills] ([BillID]),
 	[CustomerID] [int] NULL FOREIGN KEY REFERENCES [dbo].[Customers] ([CustomerID]),
 	[CustomerName] [nvarchar](100) NULL,
 	[CustomerPhone] [varchar](15) NULL,
-	[Rating] [tinyint] NOT NULL CHECK ([Rating]>=(1) AND [Rating]<=(5)),
+	[Rating] [tinyint] NOT NULL CHECK ([Rating] >= (1) AND [Rating] <= (5)),
 	[Content] [nvarchar](1000) NULL,
-	[CreatedAt] [datetime] DEFAULT (getdate())
+	[CreatedAt] [datetime] DEFAULT (getdate()),
+	[IsHidden] [bit] NOT NULL DEFAULT (0),           -- Bổ sung UC-58
+	[HiddenReason] [nvarchar](200) NULL             -- Bổ sung UC-58
 );
 GO
 
--- 22. Bảng Đăng ký lịch rảnh (WorkAvailabilities)
+-- ============================================================
+-- 23. Bảng Trả lời phản hồi (FeedbackReplies - UC-57)
+-- ============================================================
+CREATE TABLE [dbo].[FeedbackReplies](
+	[ReplyID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	[FeedbackID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Feedbacks]([FeedbackID]) ON DELETE CASCADE,
+	[EmployeeID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Employees]([EmployeeID]),
+	[ReplyContent] [nvarchar](2000) NOT NULL,
+	[CreatedAt] [datetime] NOT NULL DEFAULT (getdate())
+);
+GO
+
+-- ============================================================
+-- 24. Bảng Đăng ký lịch rảnh (WorkAvailabilities)
+-- ============================================================
 CREATE TABLE [dbo].[WorkAvailabilities](
 	[AvailabilityID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	[EmployeeID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Employees] ([EmployeeID]),
@@ -242,7 +314,45 @@ CREATE TABLE [dbo].[WorkAvailabilities](
 );
 GO
 
--- 23. Trigger tự trừ kho khi gọi món
+-- ============================================================
+-- 25. Bảng Banner quảng cáo (Banners - UC-29)
+-- ============================================================
+CREATE TABLE [dbo].[Banners](
+	[BannerID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	[Title] [nvarchar](200) NOT NULL,
+	[Subtitle] [nvarchar](500) NULL,
+	[ImageUrl] [varchar](500) NULL,
+	[LinkUrl] [varchar](255) NULL,
+	[DisplayOrder] [int] NOT NULL DEFAULT (0),
+	[IsActive] [bit] NOT NULL DEFAULT (1),
+	[CreatedAt] [datetime] NOT NULL DEFAULT (getdate()),
+	[UpdatedAt] [datetime] NULL
+);
+GO
+
+-- ============================================================
+-- 26. Bảng Tin tức / Bài viết (News - UC-30)
+-- ============================================================
+CREATE TABLE [dbo].[News](
+	[NewsID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	[Title] [nvarchar](300) NOT NULL,
+	[Summary] [nvarchar](500) NULL,
+	[Content] [nvarchar](MAX) NULL,
+	[ThumbnailUrl] [varchar](500) NULL,
+	[Category] [nvarchar](100) NULL,
+	[Author] [nvarchar](100) NULL,
+	[IsPublished] [bit] NOT NULL DEFAULT (0),
+	[IsFeatured] [bit] NOT NULL DEFAULT (0),
+	[ViewCount] [int] NOT NULL DEFAULT (0),
+	[CreatedAt] [datetime] NOT NULL DEFAULT (getdate()),
+	[UpdatedAt] [datetime] NULL,
+	[PublishedAt] [datetime] NULL
+);
+GO
+
+-- ============================================================
+-- 27. Trigger tự trừ kho khi gọi món
+-- ============================================================
 CREATE TRIGGER [dbo].[TRG_Deduct_Inventory]
 ON [dbo].[OrderDetails]
 AFTER INSERT
