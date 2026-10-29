@@ -31,21 +31,6 @@ export default function RestaurantInfo() {
                 </div>
             </div>
 
-            {/* QUICK STATS & HOURS */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                {[
-                    { icon: '📍', label: 'Prime Location', value: '123 Boulevard, Ninh Kieu, Can Tho' },
-                    { icon: '🕒', label: 'Opening Hours', value: '09:00 AM – 11:00 PM Daily' },
-                    { icon: '📞', label: 'Reservation Hotline', value: '0900 000 888' },
-                    { icon: '👑', label: 'Culinary Distinction', value: 'Michelin Recommended 2026' },
-                ].map((item, idx) => (
-                    <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-md hover:shadow-lg transition">
-                        <span className="text-3xl block mb-2">{item.icon}</span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">{item.label}</span>
-                        <p className="font-bold text-slate-800 text-sm mt-1">{item.value}</p>
-                    </div>
-                ))}
-            </div>
 
             {/* TABBED INFORMATION */}
             <div className="bg-white rounded-3xl border border-stone-200 shadow-lg p-6 sm:p-8">

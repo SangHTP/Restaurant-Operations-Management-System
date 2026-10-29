@@ -1,82 +1,29 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logoApp from '../../assets/logo/logo.png';
-import { useAuth, MOCK_ACCOUNTS_DB } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function Login() {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const { loginWithCredentials } = useAuth();
 
-    const [formData, setFormData] = useState({ email: '', password: '' });
+    const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [activeRoleLabel, setActiveRoleLabel] = useState('');
+    const [errorMessage, setErrorMessage] = useState('');
 
-    const [isGoogleModalOpen, setIsGoogleModalOpen] = useState(false);
-    const [googleLoadingEmail, setGoogleLoadingEmail] = useState('');
-
-    const GOOGLE_ACCOUNTS = [
-        { name: 'Ha Van On', email: 'havanon@fpt.edu.vn', avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80', badge: 'FPT Student' },
-        { name: 'Nguyen Thi Thanh Thao', email: 'nguyenthithanhthao2018vl@gmail.com', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80', badge: 'VIP Customer' },
-        { name: 'Madam Lumière', email: 'owner@lumiere.com', avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=120&q=80', badge: 'Restaurant Owner' },
-    ];
-
-    // Quick Login buttons for demo presentation
-    const handleQuickLogin = (demoAcc) => {
-        setFormData({ email: demoAcc.email, password: 'password123' });
-        setActiveRoleLabel(demoAcc.role);
-        setIsLoading(true);
-
-        setTimeout(() => {
-            setIsLoading(false);
-            const user = login(demoAcc.email);
-
-            if (user.role === 'Customer') {
-                navigate('/profile');
-            } else if (user.role === 'Manager' || user.role === 'Staff') {
-                navigate('/dashboard/accounts');
-            } else {
-                navigate('/dashboard/profile');
-            }
-        }, 700);
-    };
-
-    const handleGoogleLogin = () => {
-        setIsGoogleModalOpen(true);
-    };
-
-    const handleSelectGoogleAccount = (email) => {
-        setGoogleLoadingEmail(email);
-        setTimeout(() => {
-            setGoogleLoadingEmail('');
-            setIsGoogleModalOpen(false);
-            const user = login(email);
-            if (user.role === 'Customer') {
-                navigate('/profile');
-            } else if (user.role === 'Manager' || user.role === 'Staff') {
-                navigate('/dashboard/accounts');
-            } else {
-                navigate('/dashboard/profile');
-            }
-        }, 900);
-    };
-
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
-
-        setTimeout(() => {
+        setErrorMessage('');
+        try {
+            const user = await loginWithCredentials(formData.username, formData.password);
+            navigate(['Owner', 'Admin', 'Manager'].includes(user.role) ? '/dashboard/accounts' : '/dashboard/profile');
+        } catch (error) {
+            setErrorMessage(error.message);
+        } finally {
             setIsLoading(false);
-            const user = login(formData.email);
-
-            if (user.role === 'Customer') {
-                navigate('/profile');
-            } else if (user.role === 'Manager' || user.role === 'Staff') {
-                navigate('/dashboard/accounts');
-            } else {
-                navigate('/dashboard/profile');
-            }
-        }, 800);
+        }
     };
 
     return (
@@ -137,58 +84,27 @@ export default function Login() {
                 <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white/60 backdrop-blur-md">
                     <div className="max-w-md mx-auto w-full space-y-6">
 
-                        {/* QUICK DEMO ACCOUNTS SELECTOR */}
-                        <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-xl border border-[#DCC8A8]/30 space-y-2.5">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-black uppercase text-[#DCC8A8] tracking-widest flex items-center gap-1.5">
-                                    <span className="animate-pulse text-amber-400">⚡</span> Quick Demo Roles
-                                </span>
-                                <span className="text-[9px] text-slate-400 uppercase tracking-wider font-semibold">1-Click Auto Login</span>
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {MOCK_ACCOUNTS_DB.map((acc) => (
-                                    <button
-                                        key={acc.id}
-                                        type="button"
-                                        onClick={() => handleQuickLogin(acc)}
-                                        className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border ${
-                                            acc.role === 'Customer' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40 hover:bg-emerald-900' :
-                                            acc.role === 'Staff' ? 'bg-blue-950/80 text-blue-300 border-blue-500/40 hover:bg-blue-900' :
-                                            acc.role === 'Kitchen' ? 'bg-amber-950/80 text-amber-300 border-amber-500/40 hover:bg-amber-900' :
-                                            acc.role === 'Manager' ? 'bg-purple-950/80 text-purple-300 border-purple-500/40 hover:bg-purple-900' :
-                                            'bg-yellow-950/80 text-yellow-300 border-yellow-500/40 hover:bg-yellow-900'
-                                        }`}
-                                    >
-                                        {acc.role === 'Customer' && '👤 Customer'}
-                                        {acc.role === 'Staff' && '👨‍💼 Staff (POS)'}
-                                        {acc.role === 'Kitchen' && '🍳 Kitchen'}
-                                        {acc.role === 'Manager' && '📊 Manager'}
-                                        {acc.role === 'Owner' && '👑 Owner'}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
                         <div>
                             <h1 className="font-serif text-3xl font-bold text-[#081126] tracking-wide">
                                 Sign In
                             </h1>
                             <p className="font-sans text-xs text-slate-500 font-medium mt-1">
-                                Welcome back. Please enter your details below.
+                                Sign in with the username and password stored in the account database.
                             </p>
                         </div>
 
                         <form onSubmit={handleSubmit} className="space-y-4 font-sans">
                             <div>
                                 <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                                    Email Address
+                                    Username or Email
                                 </label>
                                 <input
-                                    type="email"
+                                    type="text"
                                     required
-                                    placeholder="name@example.com"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    autoComplete="username"
+                                    placeholder="username"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                                     className="w-full bg-white/90 border border-slate-300 rounded-xl px-4 py-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#081126] transition shadow-xs"
                                 />
                             </div>
@@ -234,43 +150,24 @@ export default function Login() {
                                 </div>
                             </div>
 
+                            {errorMessage && (
+                                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">
+                                    {errorMessage}
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
                                 disabled={isLoading}
                                 className="w-full bg-[#081126] text-[#DCC8A8] hover:bg-slate-900 font-extrabold text-xs uppercase tracking-widest py-3.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#DCC8A8]/30"
                             >
                                 {isLoading ? (
-                                    <span>Authenticating {activeRoleLabel || ''}...</span>
+                                    <span>Authenticating...</span>
                                 ) : (
                                     <span>Sign In to Portal</span>
                                 )}
                             </button>
                         </form>
-
-                        {/* LUXURY DIVIDER & GOOGLE SINGLE SIGN-ON */}
-                        <div className="space-y-4 pt-2">
-                            <div className="relative flex items-center justify-center">
-                                <div className="flex-grow border-t border-slate-200"></div>
-                                <span className="flex-shrink mx-4 text-[10px] font-bold uppercase text-slate-400 tracking-wider">
-                                    or continue with
-                                </span>
-                                <div className="flex-grow border-t border-slate-200"></div>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={handleGoogleLogin}
-                                className="w-full bg-white hover:bg-slate-50 border border-slate-300 rounded-xl py-2.5 px-4 text-xs font-bold text-slate-800 flex items-center justify-center gap-3 transition cursor-pointer shadow-xs hover:border-slate-400"
-                            >
-                                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                                </svg>
-                                <span>Sign in with Google Account</span>
-                            </button>
-                        </div>
 
                         {/* REGISTER FOOTER */}
                         <div className="text-center text-xs text-slate-500 font-medium pt-2">
@@ -283,91 +180,6 @@ export default function Login() {
                 </div>
 
             </div>
-
-            {/* GOOGLE OAUTH ACCOUNT CHOOSER MODAL */}
-            {isGoogleModalOpen && (
-                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 animate-fadeIn">
-                        
-                        {/* Header */}
-                        <div className="text-center pb-4 border-b border-stone-100">
-                            <svg className="w-8 h-8 mx-auto mb-2" viewBox="0 0 24 24">
-                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                            </svg>
-                            <h3 className="font-sans font-extrabold text-base text-slate-800">
-                                Choose an account
-                            </h3>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                to continue to <span className="font-bold text-[#081126]">Lumière Restaurant</span>
-                            </p>
-                        </div>
-
-                        {/* Account List */}
-                        <div className="py-3 divide-y divide-slate-100">
-                            {GOOGLE_ACCOUNTS.map((acc) => (
-                                <button
-                                    key={acc.email}
-                                    onClick={() => handleSelectGoogleAccount(acc.email)}
-                                    disabled={googleLoadingEmail !== ''}
-                                    className="w-full text-left p-3 hover:bg-slate-50 rounded-2xl flex items-center justify-between transition cursor-pointer group"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <img
-                                            src={acc.avatar}
-                                            alt={acc.name}
-                                            className="w-9 h-9 rounded-full object-cover border border-slate-200"
-                                        />
-                                        <div>
-                                            <div className="text-xs font-bold text-slate-800 group-hover:text-[#081126]">
-                                                {acc.name}
-                                            </div>
-                                            <div className="text-[11px] text-slate-400 font-mono">
-                                                {acc.email}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {googleLoadingEmail === acc.email ? (
-                                        <span className="text-[10px] font-bold text-amber-700 animate-pulse">
-                                            Signing in...
-                                        </span>
-                                    ) : (
-                                        <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">
-                                            {acc.badge}
-                                        </span>
-                                    )}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Additional Options */}
-                        <div className="pt-2 border-t border-slate-100 space-y-2">
-                            <button
-                                onClick={() => handleSelectGoogleAccount('havanon@fpt.edu.vn')}
-                                className="w-full text-left p-2.5 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-3 cursor-pointer"
-                            >
-                                <span className="w-8 text-center text-slate-400">👤</span>
-                                <span>Use another account</span>
-                            </button>
-                        </div>
-
-                        {/* Footer & Cancel */}
-                        <div className="mt-4 pt-3 text-center border-t border-slate-100 flex justify-between items-center text-[11px] text-slate-400">
-                            <span>Google Auth Simulator</span>
-                            <button
-                                onClick={() => setIsGoogleModalOpen(false)}
-                                className="font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-            )}
 
         </div>
     );

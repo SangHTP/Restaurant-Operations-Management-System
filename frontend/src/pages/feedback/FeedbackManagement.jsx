@@ -100,27 +100,7 @@ export default function FeedbackManagement() {
             )}
 
             {/* HEADER */}
-            <div className="bg-[#081126] text-white p-8 rounded-3xl border border-[#DCC8A8]/20 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div className="relative z-10">
-                    <span className="text-[10px] font-black uppercase text-[#DCC8A8] tracking-[0.3em]">
-                        ✦ GUEST FEEDBACK & REVIEWS ✦
-                    </span>
-                    <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#F5F2EA] mt-1">
-                        Customer Ratings & Reviews Hub
-                    </h1>
-                    <p className="text-xs text-[#8995AD] mt-1.5">
-                        Submit feedback, review customer satisfaction ratings, reply officially, and moderate inappropriate comments.
-                    </p>
-                </div>
-
-                <button
-                    onClick={() => setIsSubmitModalOpen(true)}
-                    className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer"
-                >
-                    ⭐ Write a Review
-                </button>
-            </div>
+View employee list, view employee detail, create employee, update employee, delete employee, asign employee role
 
             {/* FEEDBACK LIST GRID */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

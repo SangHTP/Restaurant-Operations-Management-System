@@ -1,203 +1,223 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import { kitchenApi } from '../../api/kitchenApi';
 
-const INITIAL_KITCHEN_ORDERS = [
-    {
-        id: 'K-101',
-        table: 'Table M03',
-        timeAgo: '8 mins ago',
-        urgent: true,
-        items: [
-            { id: 'k-1', name: 'Wagyu A5 Ribeye Flambé', qty: 2, status: 'Cooking', note: 'Medium-rare' },
-            { id: 'k-2', name: 'Truffle Mushroom Risotto', qty: 1, status: 'Pending', note: 'Extra parmesan' },
-        ],
-    },
-    {
-        id: 'K-102',
-        table: 'Table V01',
-        timeAgo: '3 mins ago',
-        urgent: false,
-        items: [
-            { id: 'k-3', name: 'Galaxy Lobster Hotpot', qty: 1, status: 'Preparing', note: 'Spicy broth' },
-            { id: 'k-4', name: 'Grilled King Prawns', qty: 2, status: 'Pending', note: '' },
-        ],
-    },
-    {
-        id: 'K-103',
-        table: 'Table S04',
-        timeAgo: '1 min ago',
-        urgent: false,
-        items: [
-            { id: 'k-5', name: 'Seafood Platter', qty: 1, status: 'Pending', note: 'No onions' },
-        ],
-    },
-];
+function formatElapsed(createdAt) {
+    if (!createdAt) return 'Time unavailable';
+    const created = new Date(createdAt).getTime();
+    if (Number.isNaN(created)) return 'Time unavailable';
+
+    const minutes = Math.max(0, Math.floor((Date.now() - created) / 60000));
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hr${hours === 1 ? '' : 's'} ago`;
+}
 
 export default function KitchenDisplay() {
-    const [kitchenOrders, setKitchenOrders] = useState(INITIAL_KITCHEN_ORDERS);
-    const [unavailableDishes, setUnavailableDishes] = useState(['Fresh Oysters']);
+    const { currentUser } = useAuth();
+    const canUpdateTickets = ['Kitchen', 'Manager', 'Owner', 'Admin'].includes(currentUser?.role);
+    const [tickets, setTickets] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [updatingItemId, setUpdatingItemId] = useState(null);
+    const [pageError, setPageError] = useState('');
     const [toast, setToast] = useState('');
 
-    const showToast = (msg) => {
-        setToast(msg);
-        setTimeout(() => setToast(''), 3500);
-    };
+    const loadTickets = useCallback(async (background = false) => {
+        if (background) setIsRefreshing(true);
+        else setIsLoading(true);
+        try {
+            const rows = await kitchenApi.getTickets();
+            setTickets(rows);
+            setPageError('');
+        } catch (error) {
+            setPageError(error.message);
+        } finally {
+            setIsLoading(false);
+            setIsRefreshing(false);
+        }
+    }, []);
 
-    const handleUpdateItemStatus = (orderId, itemId, nextStatus) => {
-        setKitchenOrders(prev => prev.map(order => {
-            if (order.id === orderId) {
-                const updatedItems = order.items.map(it => it.id === itemId ? { ...it, status: nextStatus } : it);
-                return { ...order, items: updatedItems };
-            }
-            return order;
-        }));
-        showToast(`Item status updated to ${nextStatus}`);
-    };
+    useEffect(() => {
+        loadTickets();
+        const intervalId = window.setInterval(() => loadTickets(true), 15000);
+        return () => window.clearInterval(intervalId);
+    }, [loadTickets]);
 
-    const handleMarkAllReady = (orderId) => {
-        setKitchenOrders(prev => prev.filter(o => o.id !== orderId));
-        showToast(`Order ${orderId} completed and sent to servers!`);
-    };
+    useEffect(() => {
+        if (!toast) return undefined;
+        const timeoutId = window.setTimeout(() => setToast(''), 3500);
+        return () => window.clearTimeout(timeoutId);
+    }, [toast]);
 
-    const handleToggleUnavailable = (dishName) => {
-        if (unavailableDishes.includes(dishName)) {
-            setUnavailableDishes(prev => prev.filter(d => d !== dishName));
-            showToast(`Dish "${dishName}" is back IN STOCK`);
-        } else {
-            setUnavailableDishes(prev => [...prev, dishName]);
-            showToast(`Dish "${dishName}" marked OUT OF STOCK (86'd)`);
+    const activeItems = useMemo(
+        () => tickets.flatMap(ticket => ticket.items),
+        [tickets]
+    );
+    const pendingCount = activeItems.filter(item => item.status === 'Pending').length;
+    const cookingCount = activeItems.filter(item => item.status === 'Cooking').length;
+
+    const handleUpdateItemStatus = async (item, nextStatus) => {
+        try {
+            setUpdatingItemId(item.id);
+            setPageError('');
+            await kitchenApi.updateItemStatus(item.id, nextStatus);
+            await loadTickets(true);
+            setToast(nextStatus === 'Ready'
+                ? `${item.name} is ready for service.`
+                : `${item.name} is now being prepared.`);
+        } catch (error) {
+            setPageError(error.message);
+        } finally {
+            setUpdatingItemId(null);
         }
     };
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8 font-sans space-y-8">
-
-            {/* TOAST */}
             {toast && (
-                <div className="fixed top-20 right-6 z-50 bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
+                <div role="status" aria-live="polite" className="fixed top-20 right-6 z-[60] bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
                     <span className="font-black text-sm">✦</span>
                     <span className="text-xs font-bold">{toast}</span>
                 </div>
             )}
 
-            {/* HEADER */}
-            <div className="bg-[#081126] text-white p-8 rounded-3xl border border-[#DCC8A8]/20 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-                <div className="relative z-10">
+            <div className="bg-[#081126] text-white p-8 rounded-3xl border border-[#DCC8A8]/20 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
                     <span className="text-[10px] font-black uppercase text-[#DCC8A8] tracking-[0.3em]">
-                        ✦ KITCHEN DISPLAY SYSTEM (KDS) ✦
+                        ✦ KITCHEN DISPLAY SYSTEM ✦
                     </span>
                     <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#F5F2EA] mt-1">
-                        Kitchen Cooking Queue & Inventory 86
+                        Kitchen Order Queue
                     </h1>
                     <p className="text-xs text-[#8995AD] mt-1.5">
-                        Live order tickets, dish preparation status, and inventory stock control for kitchen staff.
+                        Orders are loaded from the restaurant database and refreshed automatically.
                     </p>
                 </div>
+                <button
+                    type="button"
+                    onClick={() => loadTickets(true)}
+                    disabled={isRefreshing || isLoading}
+                    className="relative z-10 rounded-xl border border-[#DCC8A8]/50 px-4 py-2 text-xs font-bold text-[#DCC8A8] hover:bg-white/10 disabled:opacity-50"
+                >
+                    {isRefreshing ? 'Refreshing…' : '↻ Refresh queue'}
+                </button>
             </div>
 
-            {/* LIVE COOKING TICKETS GRID */}
-            <div>
-                <h2 className="font-serif text-2xl font-bold text-slate-900 mb-4">Active Kitchen Tickets</h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {kitchenOrders.length === 0 ? (
-                        <div className="col-span-full bg-white p-12 rounded-3xl border border-dashed text-center text-slate-400">
-                            <span className="text-4xl block mb-2">🧑‍🍳</span>
-                            <p className="font-serif font-bold text-slate-700">Kitchen Queue is Clear!</p>
-                            <p className="text-xs mt-1">All tickets served.</p>
-                        </div>
-                    ) : (
-                        kitchenOrders.map(ticket => (
-                            <div key={ticket.id} className={`bg-white rounded-3xl border shadow-lg overflow-hidden flex flex-col justify-between ${
-                                ticket.urgent ? 'border-amber-400 ring-2 ring-amber-400/30' : 'border-stone-200'
-                            }`}>
-                                <div className="p-5 border-b border-slate-100 bg-slate-900 text-white flex justify-between items-center">
-                                    <div>
-                                        <span className="text-[10px] font-bold text-[#DCC8A8] font-mono">{ticket.id}</span>
-                                        <h3 className="font-serif font-bold text-lg text-white">{ticket.table}</h3>
-                                    </div>
-                                    <span className="text-xs font-bold bg-amber-950 text-amber-300 px-3 py-1 rounded-full border border-amber-500/40">
-                                        ⏱ {ticket.timeAgo}
-                                    </span>
-                                </div>
+            {pageError && (
+                <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-semibold text-rose-800">
+                    {pageError}
+                    <button
+                        type="button"
+                        onClick={() => loadTickets()}
+                        className="ml-3 underline underline-offset-2"
+                    >
+                        Try again
+                    </button>
+                </div>
+            )}
 
-                                <div className="p-5 space-y-3 flex-1">
+            <section className="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Kitchen queue summary">
+                {[
+                    { label: 'Active tickets', value: tickets.length, color: 'text-slate-900' },
+                    { label: 'Waiting to cook', value: pendingCount, color: 'text-amber-700' },
+                    { label: 'Cooking', value: cookingCount, color: 'text-emerald-700' },
+                ].map(stat => (
+                    <div key={stat.label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{stat.label}</span>
+                        <span className={`block mt-2 text-3xl font-black ${stat.color}`}>{stat.value}</span>
+                    </div>
+                ))}
+            </section>
+
+            <section>
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                        <h2 className="font-serif text-2xl font-bold text-slate-900">Active kitchen tickets</h2>
+                        <p className="mt-1 text-xs text-slate-500">
+                            Mark items ready when they are finished; they will leave the cooking queue for service.
+                        </p>
+                    </div>
+                    <span className="text-xs font-bold text-slate-500">{tickets.length} ticket{tickets.length === 1 ? '' : 's'}</span>
+                </div>
+
+                {isLoading ? (
+                    <div role="status" className="rounded-3xl border border-slate-200 bg-white p-12 text-center text-sm font-semibold text-slate-500">
+                        Loading kitchen tickets…
+                    </div>
+                ) : tickets.length === 0 ? (
+                    <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center">
+                        <span className="mb-2 block text-4xl">🧑‍🍳</span>
+                        <p className="font-serif font-bold text-slate-700">Kitchen queue is clear</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                            New order items sent for preparation will appear here.
+                        </p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        {tickets.map(ticket => (
+                            <article key={ticket.orderId} className="flex flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-lg">
+                                <header className="flex items-center justify-between border-b border-slate-100 bg-slate-900 p-5 text-white">
+                                    <div>
+                                        <span className="font-mono text-[10px] font-bold text-[#DCC8A8]">ORDER #{ticket.orderId}</span>
+                                        <h3 className="mt-1 font-serif text-lg font-bold">{ticket.table}</h3>
+                                        <p className="mt-1 text-[10px] text-slate-300">Server: {ticket.server}</p>
+                                    </div>
+                                    <span className="rounded-full border border-amber-500/40 bg-amber-950 px-3 py-1 text-xs font-bold text-amber-300">
+                                        ⏱ {formatElapsed(ticket.createdAt)}
+                                    </span>
+                                </header>
+
+                                <div className="flex-1 space-y-3 p-5">
                                     {ticket.items.map(item => (
-                                        <div key={item.id} className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                                            <div className="flex justify-between items-start">
+                                        <div key={item.id} className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                            <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <span className="font-bold text-slate-900 text-sm block">{item.name}</span>
-                                                    {item.note && <span className="text-[10px] text-amber-700 font-bold block">📝 {item.note}</span>}
+                                                    <span className="block text-sm font-bold text-slate-900">{item.name}</span>
+                                                    {item.note && <span className="mt-1 block text-[10px] font-semibold text-amber-700">📝 {item.note}</span>}
                                                 </div>
-                                                <span className="bg-[#081126] text-[#DCC8A8] font-black text-sm px-2.5 py-0.5 rounded-lg">x{item.qty}</span>
+                                                <span className="shrink-0 rounded-lg bg-[#081126] px-2.5 py-0.5 text-sm font-black text-[#DCC8A8]">x{item.quantity}</span>
                                             </div>
 
-                                            <div className="flex justify-between items-center pt-2 border-t border-slate-200/60">
-                                                <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                                                    item.status === 'Cooking' ? 'bg-amber-100 text-amber-800' :
-                                                    item.status === 'Ready' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'
+                                            <div className="flex items-center justify-between border-t border-slate-200/70 pt-2">
+                                                <span className={`rounded px-2 py-0.5 text-[10px] font-black uppercase ${
+                                                    item.status === 'Cooking' ? 'bg-amber-100 text-amber-800' : 'bg-slate-200 text-slate-700'
                                                 }`}>
-                                                    {item.status}
+                                                    {item.status === 'Cooking' ? 'Cooking' : 'Pending'}
                                                 </span>
-
-                                                <div className="flex gap-1">
+                                                {canUpdateTickets && (
                                                     <button
-                                                        onClick={() => handleUpdateItemStatus(ticket.id, item.id, 'Cooking')}
-                                                        className="px-2 py-1 bg-amber-500 text-white font-bold text-[10px] uppercase rounded hover:bg-amber-600 cursor-pointer"
+                                                        type="button"
+                                                        disabled={updatingItemId !== null}
+                                                        onClick={() => handleUpdateItemStatus(
+                                                            item,
+                                                            item.status === 'Pending' ? 'Cooking' : 'Ready'
+                                                        )}
+                                                        className={`rounded-lg px-3 py-1.5 text-[10px] font-extrabold uppercase text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+                                                            item.status === 'Pending'
+                                                                ? 'bg-amber-600 hover:bg-amber-700'
+                                                                : 'bg-emerald-700 hover:bg-emerald-800'
+                                                        }`}
                                                     >
-                                                        Cooking
+                                                        {updatingItemId === item.id
+                                                            ? 'Saving…'
+                                                            : item.status === 'Pending' ? 'Start cooking' : 'Mark ready'}
                                                     </button>
-                                                    <button
-                                                        onClick={() => handleUpdateItemStatus(ticket.id, item.id, 'Ready')}
-                                                        className="px-2 py-1 bg-emerald-600 text-white font-bold text-[10px] uppercase rounded hover:bg-emerald-700 cursor-pointer"
-                                                    >
-                                                        Ready
-                                                    </button>
-                                                </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
                                 </div>
 
-                                <div className="p-4 bg-slate-50 border-t border-slate-100">
-                                    <button
-                                        onClick={() => handleMarkAllReady(ticket.id)}
-                                        className="w-full py-2.5 bg-[#081126] text-[#DCC8A8] font-extrabold text-xs uppercase rounded-xl hover:bg-slate-800 transition cursor-pointer shadow-md"
-                                    >
-                                        ✅ Ticket Complete & Dispatch
-                                    </button>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </div>
-
-            {/* KITCHEN 86 DISHES CONTROL */}
-            <div className="bg-white rounded-3xl border border-stone-200 shadow-lg p-6 space-y-4">
-                <h3 className="font-serif text-xl font-bold text-[#081126]">Quick Inventory 86 Control</h3>
-                <p className="text-xs text-slate-500">Toggle dish availability to instantly notify waiters & prevent ordering</p>
-
-                <div className="flex flex-wrap gap-3 pt-2">
-                    {['Wagyu A5 Ribeye Flambé', 'Fresh Oysters', 'Galaxy Lobster Hotpot', 'Truffle Mushroom Risotto', 'Seafood Platter'].map(dish => {
-                        const is86 = unavailableDishes.includes(dish);
-                        return (
-                            <button
-                                key={dish}
-                                onClick={() => handleToggleUnavailable(dish)}
-                                className={`px-4 py-2 rounded-2xl text-xs font-bold transition cursor-pointer border flex items-center gap-2 ${
-                                    is86
-                                        ? 'bg-rose-100 text-rose-800 border-rose-300 line-through'
-                                        : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                }`}
-                            >
-                                <span>{is86 ? '🚫 OUT OF STOCK' : '✅ AVAILABLE'}</span>
-                                <span>{dish}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
+                                <footer className="border-t border-slate-100 bg-slate-50 px-5 py-3 text-[10px] font-semibold text-slate-500">
+                                    Finished items are removed from the queue and ready for service.
+                                </footer>
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </section>
         </div>
     );
 }
