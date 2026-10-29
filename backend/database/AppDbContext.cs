@@ -16,6 +16,7 @@ namespace backend.database
         public DbSet<MenuItem> MenuItems { get; set; }
         public DbSet<Area> Areas { get; set; }
         public DbSet<Table> Tables { get; set; }
+        public DbSet<DailyInventory> DailyInventories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -40,7 +41,7 @@ namespace backend.database
                 .IsUnique();
 
             modelBuilder.Entity<MenuItem>()
-                .HasOne<Category>()
+                .HasOne(item => item.Category)
                 .WithMany()
                 .HasForeignKey(item => item.CategoryID)
                 .OnDelete(DeleteBehavior.Restrict);

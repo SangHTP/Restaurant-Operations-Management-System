@@ -1,19 +1,21 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace RestaurantAPI.Models;
-
-[Table("DailyInventories")]
-public class DailyInventory
+namespace backend.Models
 {
-    [Key]
-    public int InventoryID { get; set; }
 
-    public int MenuItemID { get; set; }
+    [Table("DailyInventories")]
+    public class DailyInventory
+    {
+        [Key]
+        public int InventoryID { get; set; }
 
-    public DateTime Date { get; set; }
+        public int MenuItemID { get; set; }
 
-    public int InitialQuantity { get; set; }
+        public DateTime Date { get; set; }
 
-    public int RemainingQuantity { get; set; }
+        public int InitialQuantity { get; set; }
+
+        public int RemainingQuantity { get; set; }
+    }
 }

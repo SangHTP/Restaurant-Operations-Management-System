@@ -4,8 +4,6 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace backend.Models
 {
-    // Entity tối thiểu để kiểm tra món ăn đang tham chiếu
-    // đến danh mục nào.
     [Table("MenuItems")]
     public class MenuItem
     {
@@ -13,11 +11,25 @@ namespace backend.Models
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int MenuItemID { get; set; }
 
+        [Required]
         public int CategoryID { get; set; }
-        public bool IsActive { get; set; }
-        public string ItemName { get; internal set; }
+
+        [Required]
+        [StringLength(150)]
+        public string ItemName { get; set; } = string.Empty;
+
+        [Range(0, double.MaxValue)]
+        [Column(TypeName = "decimal(18,0)")]
+        public decimal Price { get; set; }
+
+        [StringLength(500)]
+        public string? Description { get; set; }
+
+        [StringLength(255)]
+        public string? ImageUrl { get; set; }
+
+        public bool IsActive { get; set; } = true;
+
         public virtual Category? Category { get; set; }
-        public string ImageUrl { get; internal set; }
-        public decimal Price { get; internal set; }
     }
 }

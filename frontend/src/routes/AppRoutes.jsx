@@ -32,6 +32,7 @@ import AnalyticsDashboard from '../pages/dashboard/AnalyticsDashboard';
 import FeedbackManagement from '../pages/feedback/FeedbackManagement';
 import BannerManagement from '../pages/manager/BannerManagement';
 import NewsManagement from '../pages/manager/NewsManagement';
+import DailyInventoryManagement from '../pages/manager/DailyInventoryManagement';
 
 export default function AppRoutes() {
     return (
@@ -63,6 +64,7 @@ export default function AppRoutes() {
             <RouterRoute path="/dashboard" element={<DashboardLayout />}>
                 <RouterRoute index element={<AnalyticsDashboard />} />
                 <RouterRoute path="profile" element={<Profile />} />
+                <RouterRoute path="daily-inventory" element={<DailyInventoryManagement />} />
                 <RouterRoute path="accounts" element={<AccountManagement />} />
                 <RouterRoute path="tables" element={<TableLayout />} />
                 <RouterRoute path="menu" element={<Menu />} />
