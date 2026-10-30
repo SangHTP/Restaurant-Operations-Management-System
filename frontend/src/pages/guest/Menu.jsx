@@ -18,6 +18,56 @@ import {
     deleteCategory,
     createMenuItem,
 } from '../../api/menuApi';
+import { getDailyInventories } from '../../api/dailyInventoryApi';
+// Lấy ngày hiện tại theo múi giờ máy tính, định dạng YYYY-MM-DD
+function getTodayLocalDate() {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+// Ghép thông tin Daily Inventory vào danh sách Menu Items
+function mapMenuItemsWithInventory(menuItems, inventories) {
+    return menuItems.map((item) => {
+        const menuItemId = Number(
+            item.menuItemID ?? item.MenuItemID
+        );
+
+        const inventory = inventories.find(
+            (stock) =>
+                Number(stock.menuItemID ?? stock.MenuItemID) === menuItemId
+        );
+
+        const isActive = Boolean(item.isActive ?? item.IsActive);
+
+        return {
+            id: menuItemId,
+            categoryId: item.categoryID ?? item.CategoryID,
+            name: item.itemName ?? item.ItemName ?? '',
+            category: item.categoryName ?? item.CategoryName ?? '',
+            price: Number(item.price ?? item.Price ?? 0),
+            image: item.imageUrl ?? item.ImageUrl ?? '',
+            badge: isActive ? 'MENU ITEM' : 'INACTIVE',
+            description: item.description ?? item.Description ?? '',
+
+            // Daily Inventory
+            dailyMax: inventory
+                ? Number(inventory.initialQuantity ?? inventory.InitialQuantity)
+                : null,
+
+            dailyLeft: inventory
+                ? Number(inventory.remainingQuantity ?? inventory.RemainingQuantity)
+                : null,
+
+            prepTime: '—',
+            calories: '—',
+            active: isActive,
+        };
+    });
+}
 export default function Menu() {
     const { currentUser } = useAuth();
     const isManager = currentUser?.role === 'Manager' || currentUser?.role === 'Owner';
@@ -159,27 +209,17 @@ export default function Menu() {
                 active: foodForm.active,
             });
 
-            const data = await getMenuItems();
+            const today = getTodayLocalDate();
 
-            const updatedFoods = data.map((item) => {
-                const isActive = Boolean(item.isActive ?? item.IsActive);
+            const [menuData, inventoryData] = await Promise.all([
+                getMenuItems(),
+                getDailyInventories(today),
+            ]);
 
-                return {
-                    id: item.menuItemID ?? item.MenuItemID,
-                    categoryId: item.categoryID ?? item.CategoryID,
-                    name: item.itemName ?? item.ItemName ?? '',
-                    category: item.categoryName ?? item.CategoryName ?? '',
-                    price: Number(item.price ?? item.Price ?? 0),
-                    image: item.imageUrl ?? item.ImageUrl ?? '',
-                    badge: isActive ? 'MENU ITEM' : 'INACTIVE',
-                    description: item.description ?? item.Description ?? '',
-                    dailyMax: null,
-                    dailyLeft: null,
-                    prepTime: '—',
-                    calories: '—',
-                    active: isActive,
-                };
-            });
+            const updatedFoods = mapMenuItemsWithInventory(
+                menuData,
+                inventoryData
+            );
 
             setFoods(updatedFoods);
 
@@ -360,7 +400,7 @@ export default function Menu() {
         });
     };
 
-    // Load food list from the backend API
+    // Load menu items and today's daily inventory
     useEffect(() => {
         let cancelled = false;
 
@@ -369,35 +409,27 @@ export default function Menu() {
             setFoodsError('');
 
             try {
-                const data = await getMenuItems();
+                const today = getTodayLocalDate();
+
+                // Load menu items and inventory in parallel
+                const [menuData, inventoryData] = await Promise.all([
+                    getMenuItems(),
+                    getDailyInventories(today),
+                ]);
 
                 if (cancelled) return;
 
-                const mappedFoods = data.map((item) => {
-                    const isActive = Boolean(item.isActive ?? item.IsActive);
-
-                    return {
-                        id: item.menuItemID ?? item.MenuItemID,
-                        categoryId: item.categoryID ?? item.CategoryID,
-                        name: item.itemName ?? item.ItemName ?? '',
-                        category: item.categoryName ?? item.CategoryName ?? '',
-                        price: Number(item.price ?? item.Price ?? 0),
-                        image: item.imageUrl ?? item.ImageUrl ?? '',
-                        badge: isActive ? 'MENU ITEM' : 'INACTIVE',
-                        description: item.description ?? item.Description ?? '',
-                        // Daily inventory is not part of the MenuItems API yet.
-                        dailyMax: null,
-                        dailyLeft: null,
-                        prepTime: '—',
-                        calories: '—',
-                        active: isActive,
-                    };
-                });
+                const mappedFoods = mapMenuItemsWithInventory(
+                    menuData,
+                    inventoryData
+                );
 
                 setFoods(mappedFoods);
             } catch (error) {
                 if (!cancelled) {
-                    setFoodsError(error.message || 'Unable to load menu items.');
+                    setFoodsError(
+                        error.message || 'Unable to load menu items and daily inventory.'
+                    );
                 }
             } finally {
                 if (!cancelled) {
