@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 import { useAuth, MOCK_ACCOUNTS_DB } from '../../context/AuthContext';
 
 export default function Profile() {
@@ -57,11 +58,11 @@ export default function Profile() {
     const handleChangePassword = (e) => {
         e.preventDefault();
         if (passForm.newPassword !== passForm.confirmPassword) {
-            setToastMessage('⚠️ New password and confirm password do not match!');
+            setToastMessage('New password and confirm password do not match!');
             setTimeout(() => setToastMessage(''), 3500);
             return;
         }
-        setToastMessage('✅ Password changed successfully!');
+        setToastMessage('Password changed successfully!');
         setPassForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
         setTimeout(() => setToastMessage(''), 3000);
         setActiveTab('view');
@@ -73,7 +74,7 @@ export default function Profile() {
             {/* TOAST SUCCESS NOTIFICATION */}
             {toastMessage && (
                 <div className="fixed top-20 right-6 z-50 bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-                    <span className="text-xl">✅</span>
+                    <IconGlyph glyph="✅" size={20} />
                     <span className="text-xs font-bold uppercase tracking-wider">{toastMessage}</span>
                 </div>
             )}
@@ -208,7 +209,7 @@ export default function Profile() {
                                     }}
                                     className="px-4 py-2 bg-[#081126] text-[#DCC8A8] text-xs font-bold uppercase rounded-xl hover:bg-slate-800 transition cursor-pointer"
                                 >
-                                    ✏ Edit Profile
+                                    <IconGlyph glyph="✏" size={14} /> Edit Profile
                                 </button>
                             </div>
 
@@ -308,7 +309,7 @@ export default function Profile() {
                                             className="w-12 h-12 rounded-full object-cover border-2 border-[#DCC8A8] shadow-xs"
                                         />
                                         <label className="px-4 py-2 bg-[#081126] hover:bg-slate-800 text-[#DCC8A8] border border-[#DCC8A8]/40 rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-2">
-                                            <span>📷 Select Photo from Computer</span>
+                                            <span><IconGlyph glyph="📷" size={15} /> Select Photo from Computer</span>
                                             <input
                                                 type="file"
                                                 accept="image/*"
