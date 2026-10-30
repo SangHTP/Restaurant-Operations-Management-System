@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { authApi } from '../api/authApi';
 import customerAvatar from '../assets/avartar/customer.jpg';
 import staffAvatar from '../assets/avartar/staff.jpg';
 import chefAvatar from '../assets/avartar/chef.jpeg';
@@ -79,8 +80,27 @@ export function AuthProvider({ children }) {
     // Initial user from localStorage or null
     const [currentUser, setCurrentUser] = useState(() => {
         const saved = localStorage.getItem('lumiere_auth_user');
-        return saved ? JSON.parse(saved) : MOCK_ACCOUNTS_DB[0]; // Default logged in as Customer
+        return saved ? JSON.parse(saved) : null;
     });
+
+    useEffect(() => {
+        let isMounted = true;
+        authApi.currentUser()
+            .then((user) => {
+                if (!isMounted) return;
+                if (user) {
+                    setCurrentUser(mapAuthenticatedUser(user));
+                } else {
+                    setCurrentUser((savedUser) =>
+                        savedUser && savedUser.role !== 'Customer' ? null : savedUser
+                    );
+                }
+            })
+            .catch((error) => console.error('Unable to restore the authenticated session:', error));
+        return () => {
+            isMounted = false;
+        };
+    }, []);
 
     useEffect(() => {
         if (currentUser) {
@@ -114,9 +134,16 @@ export function AuthProvider({ children }) {
         return targetUser;
     };
 
+    const loginWithCredentials = async (username, password) => {
+        const user = mapAuthenticatedUser(await authApi.login(username, password));
+        setCurrentUser(user);
+        return user;
+    };
+
     // Logout
-    const logout = () => {
+    const logout = async () => {
         setCurrentUser(null);
+        await authApi.logout();
     };
 
     // Update Profile
@@ -127,10 +154,29 @@ export function AuthProvider({ children }) {
     };
 
     return (
-        <AuthContext.Provider value={{ currentUser, setCurrentUser, login, logout, updateProfile }}>
+        <AuthContext.Provider value={{ currentUser, setCurrentUser, login, loginWithCredentials, logout, updateProfile }}>
             {children}
         </AuthContext.Provider>
     );
+}
+
+function mapAuthenticatedUser(user) {
+    const role = user.roleName;
+    const avatar = role === 'Kitchen' ? chefAvatar :
+        ['Manager', 'Owner', 'Admin'].includes(role) ? ownAvatar : staffAvatar;
+    return {
+        id: `EMP-${user.employeeId}`,
+        employeeId: user.employeeId,
+        username: user.username,
+        role,
+        name: user.fullName,
+        email: user.email ?? '',
+        phone: user.phone,
+        departmentId: user.departmentId,
+        departmentName: user.departmentName ?? '',
+        avatar,
+        status: 'Active',
+    };
 }
 
 export function useAuth() {

@@ -1,46 +1,28 @@
+import { useCallback, useEffect, useState } from 'react';
 import { useState } from 'react';
 import IconGlyph from '../../components/common/IconGlyph';
 import staffAvatar from '../../assets/avartar/staff.jpg';
 import chefAvatar from '../../assets/avartar/chef.jpeg';
+import { employeeApi } from '../../api/employeeApi';
 
-const INITIAL_EMPLOYEES = [
-    {
-        id: 'EMP-01',
-        name: 'Nguyen Van Minh',
-        email: 'minh.nguyen@lumiere.com',
-        phone: '0912345678',
-        role: 'Staff',
-        position: 'Head Waiter',
-        area: 'Main Dining Hall',
-        availability: 'Morning & Evening',
-        shifts: ['Mon-Morning', 'Wed-Evening', 'Fri-Evening'],
-        avatar: staffAvatar,
-    },
-    {
-        id: 'EMP-02',
-        name: 'Chef Antoine Le',
-        email: 'antoine.chef@lumiere.com',
-        phone: '0987654321',
-        role: 'Kitchen',
-        position: 'Executive Head Chef',
-        area: 'Hot Kitchen Station',
-        availability: 'All Shifts',
-        shifts: ['Mon-Evening', 'Tue-Evening', 'Thu-Evening', 'Sat-Evening'],
-        avatar: chefAvatar,
-    },
-    {
-        id: 'EMP-03',
-        name: 'Tran Hoang Nam',
-        email: 'nam.tran@lumiere.com',
-        phone: '0909090909',
-        role: 'Staff',
-        position: 'Senior Bartender',
-        area: 'Sky Bar Terrace',
-        availability: 'Evening & Night',
-        shifts: ['Fri-Night', 'Sat-Night', 'Sun-Night'],
-        avatar: staffAvatar,
-    },
-];
+function mapEmployee(employee) {
+    return {
+        id: String(employee.employeeId),
+        name: employee.fullName,
+        email: employee.email ?? '',
+        phone: employee.phone,
+        role: employee.roleName,
+        departmentId: employee.departmentId ? String(employee.departmentId) : '',
+        departmentName: employee.departmentName ?? '',
+        position: employee.position ?? employee.roleName,
+        area: 'Unassigned',
+        availability: 'Managed in Work Availability',
+        shifts: [],
+        avatar: employee.roleName === 'Kitchen' ? chefAvatar : staffAvatar,
+        status: employee.status,
+        createdAt: employee.createdAt,
+    };
+}
 
 const SHIFTS = [
     { id: 'SH-1', name: 'Morning Shift', time: '08:00 AM – 04:00 PM', count: 6 },
@@ -49,60 +31,229 @@ const SHIFTS = [
 ];
 
 export default function EmployeeScheduleManagement() {
-    const [employees, setEmployees] = useState(INITIAL_EMPLOYEES);
-    const [selectedEmp, setSelectedEmp] = useState(employees[0]);
+    const [employees, setEmployees] = useState([]);
+    const [roles, setRoles] = useState([]);
+    const [departments, setDepartments] = useState([]);
+    const [selectedEmp, setSelectedEmp] = useState(null);
     const [activeTab, setActiveTab] = useState('roster'); // roster | shifts | availability
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [employeeModal, setEmployeeModal] = useState(null);
     const [toast, setToast] = useState('');
+    const [pageError, setPageError] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('Active');
 
     const [formEmp, setFormEmp] = useState({
         name: '',
         email: '',
         phone: '',
         role: 'Staff',
+        departmentId: '',
         position: 'Waiter',
         area: 'Main Dining Hall',
         availability: 'Morning & Evening',
+        status: 'Active',
     });
+
+    const loadDirectory = useCallback(async (selectedId = null) => {
+        setIsLoading(true);
+        try {
+            const [employeeRows, roleRows, departmentRows] = await Promise.all([
+                employeeApi.getEmployees(),
+                employeeApi.getRoles(),
+                employeeApi.getDepartments(),
+            ]);
+            const mappedEmployees = employeeRows.map(mapEmployee);
+            setEmployees(mappedEmployees);
+            setRoles(roleRows.map(role => role.roleName));
+            setDepartments(departmentRows);
+            setSelectedEmp(
+                mappedEmployees.find(employee => employee.id === String(selectedId)) ??
+                mappedEmployees.find(employee => employee.status === 'Active') ??
+                null
+            );
+            setPageError('');
+        } catch (error) {
+            setPageError(error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadDirectory();
+    }, [loadDirectory]);
 
     const showToast = (msg) => {
         setToast(msg);
         setTimeout(() => setToast(''), 3500);
     };
 
-    const handleCreateEmployee = (e) => {
-        e.preventDefault();
-        const newEmp = {
-            id: `EMP-${Date.now().toString().slice(-2)}`,
-            ...formEmp,
-            shifts: ['Mon-Morning'],
-            avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=400&q=80',
-        };
-        setEmployees([...employees, newEmp]);
-        setIsAddModalOpen(false);
-        showToast(`Registered new staff member "${newEmp.name}"`);
+    const reloadEmployees = async (selectedId = null) => {
+        const rows = await employeeApi.getEmployees();
+        const mappedEmployees = rows.map(mapEmployee);
+        setEmployees(mappedEmployees);
+        setSelectedEmp(
+            mappedEmployees.find(employee => employee.id === String(selectedId)) ??
+            mappedEmployees.find(employee => employee.status === 'Active') ??
+            null
+        );
     };
 
-    const handleUpdateAssignment = (id, newArea, newPosition) => {
-        setEmployees(prev => prev.map(e => e.id === id ? { ...e, area: newArea, position: newPosition } : e));
-        setSelectedEmp(prev => prev?.id === id ? { ...prev, area: newArea, position: newPosition } : prev);
-        showToast(`Updated area assignment for ${selectedEmp.name} → ${newArea}`);
+    const openCreateModal = () => {
+        setFormEmp({
+            name: '',
+            email: '',
+            phone: '',
+            role: 'Staff',
+            departmentId: '',
+            position: 'Waiter',
+            area: 'Main Dining Hall',
+            availability: 'Morning & Evening',
+            status: 'Active',
+        });
+        setEmployeeModal('create');
+    };
+
+    const openEditModal = (employee) => {
+        setFormEmp({
+            name: employee.name,
+            email: employee.email,
+            phone: employee.phone,
+            role: employee.role,
+            departmentId: employee.departmentId ? String(employee.departmentId) : '',
+            position: employee.position,
+            area: employee.area,
+            availability: employee.availability,
+            status: employee.status ?? 'Active',
+        });
+        setEmployeeModal({ type: 'edit', employee });
+    };
+
+    const handleSaveEmployee = async (e) => {
+        e.preventDefault();
+        setPageError('');
+        const normalized = {
+            ...formEmp,
+            name: formEmp.name.trim(),
+            email: formEmp.email.trim().toLowerCase(),
+            phone: formEmp.phone.trim(),
+            position: formEmp.position.trim(),
+            area: formEmp.area.trim(),
+            availability: formEmp.availability.trim(),
+        };
+        const editingId = employeeModal?.type === 'edit' ? employeeModal.employee.id : null;
+        const duplicate = employees.some(employee =>
+            employee.id !== editingId &&
+            ((normalized.email && employee.email.toLowerCase() === normalized.email) ||
+                employee.phone === normalized.phone)
+        );
+
+        if (duplicate) {
+            showToast('An employee with this email address or phone number already exists.');
+            return;
+        }
+
+        try {
+            setIsSaving(true);
+            setPageError('');
+            const payload = {
+                fullName: normalized.name,
+                email: normalized.email || null,
+                phone: normalized.phone,
+                roleName: normalized.role,
+                departmentId: normalized.departmentId ? Number(normalized.departmentId) : null,
+                position: normalized.position || null,
+                status: normalized.status,
+            };
+            if (employeeModal === 'create') {
+                const created = await employeeApi.createEmployee(payload);
+                await reloadEmployees(created.employeeId);
+                showToast(`Created employee "${normalized.name}".`);
+            } else if (employeeModal?.type === 'edit') {
+                await employeeApi.updateEmployee(employeeModal.employee.id, payload);
+                await reloadEmployees(employeeModal.employee.id);
+                showToast(`Updated employee "${normalized.name}".`);
+            }
+            setEmployeeModal(null);
+        } catch (error) {
+            showToast(error.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleUpdateAssignment = async (id, newArea, newPosition) => {
+        const employee = employees.find(item => item.id === id);
+        if (!employee) return;
+        try {
+            setPageError('');
+            if (employee.position !== newPosition) {
+                await employeeApi.updateEmployee(id, {
+                    fullName: employee.name,
+                    email: employee.email || null,
+                    phone: employee.phone,
+                    roleName: employee.role,
+                    departmentId: employee.departmentId ? Number(employee.departmentId) : null,
+                    position: newPosition,
+                    status: employee.status,
+                });
+            }
+            await reloadEmployees(id);
+            if (employee.area !== newArea) {
+                showToast('Working area is part of shift assignments and is not stored by the employee API yet.');
+            } else {
+                showToast(`Updated position for ${employee.name}.`);
+            }
+        } catch (error) {
+            showToast(error.message);
+        }
+    };
+
+    const handleAssignRole = async (id, role) => {
+        try {
+            setPageError('');
+            await employeeApi.assignRole(id, role);
+            await reloadEmployees(id);
+            showToast(`Assigned the ${role} role to ${selectedEmp?.name ?? 'employee'}.`);
+        } catch (error) {
+            showToast(error.message);
+        }
     };
 
     const [confirmModal, setConfirmModal] = useState(null);
 
     const handleDeleteEmployee = (id, name) => {
         setConfirmModal({
-            title: 'Remove Staff Member',
-            message: `Are you sure you want to remove employee "${name}" from employee records? This action cannot be undone.`,
-            onConfirm: () => {
-                setEmployees(prev => prev.filter(e => e.id !== id));
-                setSelectedEmp(null);
-                showToast(`Removed employee ${name}`);
-                setConfirmModal(null);
+            title: 'Delete Employee',
+            message: `Delete "${name}"? If this employee has no related shifts, orders, or other records, the employee will be permanently deleted. Otherwise, the employee will be set to Inactive to preserve history.`,
+            onConfirm: async () => {
+                try {
+                    setPageError('');
+                    const result = await employeeApi.deleteEmployee(id);
+                    await reloadEmployees();
+                    showToast(result?.message ?? `Processed deletion for ${name}.`);
+                    setConfirmModal(null);
+                } catch (error) {
+                    showToast(error.message);
+                }
             }
         });
     };
+
+    const filteredEmployees = employees.filter(employee => {
+        const query = searchTerm.trim().toLowerCase();
+        const matchesSearch = !query ||
+            employee.name.toLowerCase().includes(query) ||
+            employee.email.toLowerCase().includes(query) ||
+            employee.phone.toLowerCase().includes(query) ||
+            employee.id.toLowerCase().includes(query);
+        const matchesRole = roleFilter === 'All' || employee.role === roleFilter;
+        const matchesStatus = statusFilter === 'All' || (employee.status ?? 'Active') === statusFilter;
+        return matchesSearch && matchesRole && matchesStatus;
+    });
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-8 font-sans space-y-8">
@@ -112,6 +263,12 @@ export default function EmployeeScheduleManagement() {
                 <div className="fixed top-20 right-6 z-50 bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
                     <span className="font-black text-sm">✦</span>
                     <span className="text-xs font-bold">{toast}</span>
+                </div>
+            )}
+            {pageError && (
+                <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                    {pageError}
+                    <button type="button" onClick={loadDirectory} className="ml-3 font-bold underline">Retry</button>
                 </div>
             )}
 
@@ -131,8 +288,9 @@ export default function EmployeeScheduleManagement() {
                 </div>
 
                 <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer"
+                    onClick={openCreateModal}
+                    disabled={isLoading || roles.length === 0}
+                    className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer disabled:opacity-50"
                 >
                     + Add New Employee
                 </button>
@@ -160,18 +318,47 @@ export default function EmployeeScheduleManagement() {
             </div>
 
             {/* CONTENT AREA */}
-            {activeTab === 'roster' && (
+            {activeTab === 'roster' && isLoading && (
+                <div role="status" className="rounded-2xl bg-white p-10 text-center text-sm text-slate-500 shadow">
+                    Loading employee directory…
+                </div>
+            )}
+
+            {activeTab === 'roster' && !isLoading && !pageError && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                     {/* EMPLOYEE LIST */}
                     <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200 shadow-lg overflow-hidden">
                         <div className="p-5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                             <h2 className="font-serif font-bold text-[#081126]">Staff Members Directory</h2>
-                            <span className="text-xs text-slate-400 font-bold">{employees.length} active staff</span>
+                            <span className="text-xs text-slate-400 font-bold">
+                                {employees.filter(employee => (employee.status ?? 'Active') === 'Active').length} active staff
+                            </span>
                         </div>
 
                         <div className="divide-y divide-slate-100">
-                            {employees.map(emp => (
+                            <div className="p-4 border-b border-slate-100 grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <input
+                                    type="search"
+                                    value={searchTerm}
+                                    onChange={event => setSearchTerm(event.target.value)}
+                                    placeholder="Search name, email, phone or ID..."
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs"
+                                />
+                                <select value={roleFilter} onChange={event => setRoleFilter(event.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                                    <option value="All">All roles</option>
+                                    {roles.map(role => <option key={role} value={role}>{role}</option>)}
+                                </select>
+                                <select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs">
+                                    <option value="Active">Active employees</option>
+                                    <option value="Inactive">Inactive employees</option>
+                                    <option value="All">All statuses</option>
+                                </select>
+                            </div>
+
+                            {filteredEmployees.length === 0 ? (
+                                <div className="p-10 text-center text-sm text-slate-400">No employees match your search.</div>
+                            ) : filteredEmployees.map(emp => (
                                 <div
                                     key={emp.id}
                                     onClick={() => setSelectedEmp(emp)}
@@ -194,8 +381,12 @@ export default function EmployeeScheduleManagement() {
 
                                     <div className="text-right">
                                         <span className="font-mono text-xs text-slate-400 font-bold block">{emp.id}</span>
-                                        <span className="text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">
-                                            {emp.shifts.length} weekly shifts
+                                        <span className={`text-[10px] px-2 py-0.5 rounded border font-bold ${
+                                            (emp.status ?? 'Active') === 'Active'
+                                                ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                                                : 'text-slate-600 bg-slate-100 border-slate-200'
+                                        }`}>
+                                            {emp.status ?? 'Active'}
                                         </span>
                                     </div>
                                 </div>
@@ -214,6 +405,31 @@ export default function EmployeeScheduleManagement() {
                                 </div>
 
                                 <div className="space-y-3 text-xs">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <span className="block text-[10px] font-black text-slate-400 uppercase">Employee ID</span>
+                                            <span className="font-mono text-slate-800">{selectedEmp.id}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] font-black text-slate-400 uppercase">Department</span>
+                                            <span className="text-slate-800">{selectedEmp.departmentName || 'Unassigned'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="block text-[10px] font-black text-slate-400 uppercase">Phone</span>
+                                            <span className="text-slate-800">{selectedEmp.phone}</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">System Role</label>
+                                        <select
+                                            value={selectedEmp.role}
+                                            disabled={(selectedEmp.status ?? 'Active') !== 'Active'}
+                                            onChange={e => handleAssignRole(selectedEmp.id, e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold disabled:opacity-50"
+                                        >
+                                            {roles.map(role => <option key={role} value={role}>{role}</option>)}
+                                        </select>
+                                    </div>
                                     <div>
                                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Working Position</label>
                                         <select
@@ -237,6 +453,7 @@ export default function EmployeeScheduleManagement() {
                                             onChange={e => handleUpdateAssignment(selectedEmp.id, e.target.value, selectedEmp.position)}
                                             className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold"
                                         >
+                                            <option value="Unassigned">Unassigned</option>
                                             <option value="Main Dining Hall">Main Dining Hall</option>
                                             <option value="VIP Garden Lounge">VIP Garden Lounge</option>
                                             <option value="Sky Bar Terrace">Sky Bar Terrace</option>
@@ -248,14 +465,23 @@ export default function EmployeeScheduleManagement() {
                                         <span className="text-[10px] font-black text-slate-400 uppercase block">Registered Availability</span>
                                         <span className="font-bold text-slate-800">{selectedEmp.availability}</span>
                                     </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => openEditModal(selectedEmp)}
+                                            className="flex-1 py-2 bg-[#081126] text-[#DCC8A8] font-bold text-xs uppercase rounded-xl hover:bg-slate-800 transition cursor-pointer"
+                                        >
+                                            Edit Employee
+                                        </button>
+                                        {(selectedEmp.status ?? 'Active') === 'Active' && (
+                                            <button
+                                                onClick={() => handleDeleteEmployee(selectedEmp.id, selectedEmp.name)}
+                                                className="flex-1 py-2 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs uppercase rounded-xl hover:bg-rose-100 transition cursor-pointer"
+                                            >
+                                                Delete
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-
-                                <button
-                                    onClick={() => handleDeleteEmployee(selectedEmp.id, selectedEmp.name)}
-                                    className="w-full py-2 bg-rose-50 text-rose-700 border border-rose-200 font-bold text-xs uppercase rounded-xl hover:bg-rose-100 transition cursor-pointer"
-                                >
-                                    Delete Employee Record
-                                </button>
                             </div>
                         ) : null}
                     </div>
@@ -286,7 +512,7 @@ export default function EmployeeScheduleManagement() {
                     <h2 className="font-serif text-xl font-bold text-[#081126]">Work Availability Submissions</h2>
                     <p className="text-xs text-slate-500">Staff register their available working hours for shift scheduling</p>
                     <div className="divide-y divide-slate-100">
-                        {employees.map(e => (
+                        {employees.filter(employee => (employee.status ?? 'Active') === 'Active').map(e => (
                             <div key={e.id} className="py-3 flex justify-between items-center text-xs">
                                 <div>
                                     <span className="font-bold text-slate-900 block">{e.name} ({e.role})</span>
@@ -302,15 +528,17 @@ export default function EmployeeScheduleManagement() {
             )}
 
             {/* CREATE EMPLOYEE MODAL */}
-            {isAddModalOpen && (
+            {employeeModal && (
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200">
                         <div className="flex justify-between items-center pb-3 border-b border-stone-200">
-                            <h3 className="font-serif font-bold text-lg text-[#081126]">Add New Employee</h3>
-                            <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                            <h3 className="font-serif font-bold text-lg text-[#081126]">
+                                {employeeModal === 'create' ? 'Add New Employee' : 'Update Employee'}
+                            </h3>
+                            <button onClick={() => setEmployeeModal(null)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
                         </div>
 
-                        <form onSubmit={handleCreateEmployee} className="space-y-4 mt-4 text-xs">
+                        <form onSubmit={handleSaveEmployee} className="space-y-4 mt-4 text-xs">
                             <div>
                                 <label className="block font-bold text-slate-700 uppercase mb-1">Full Name</label>
                                 <input
@@ -336,17 +564,27 @@ export default function EmployeeScheduleManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Role</label>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Phone</label>
+                                    <input
+                                        type="tel"
+                                        required
+                                        placeholder="0912345678"
+                                        value={formEmp.phone}
+                                        onChange={e => setFormEmp({ ...formEmp, phone: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 uppercase mb-1">System Role</label>
                                     <select
                                         value={formEmp.role}
                                         onChange={e => setFormEmp({ ...formEmp, role: e.target.value })}
                                         className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold"
                                     >
-                                        <option value="Staff">Staff</option>
-                                        <option value="Kitchen">Kitchen</option>
-                                        <option value="Manager">Manager</option>
+                                        {roles.map(role => <option key={role} value={role}>{role}</option>)}
                                     </select>
-                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -360,19 +598,41 @@ export default function EmployeeScheduleManagement() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block font-bold text-slate-700 uppercase mb-1">Assigned Area</label>
-                                    <input
-                                        type="text"
-                                        value={formEmp.area}
-                                        onChange={e => setFormEmp({ ...formEmp, area: e.target.value })}
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Department</label>
+                                    <select
+                                        value={formEmp.departmentId}
+                                        onChange={e => setFormEmp({ ...formEmp, departmentId: e.target.value })}
                                         className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs"
-                                    />
+                                    >
+                                        <option value="">No department</option>
+                                        {departments.map(department => (
+                                            <option key={department.departmentId} value={department.departmentId}>
+                                                {department.departmentName}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 
+                            {employeeModal !== 'create' && (
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase mb-1">Employment Status</label>
+                                    <select
+                                        value={formEmp.status}
+                                        onChange={e => setFormEmp({ ...formEmp, status: e.target.value })}
+                                        className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-bold"
+                                    >
+                                        <option value="Active">Active</option>
+                                        <option value="Inactive">Inactive</option>
+                                    </select>
+                                </div>
+                            )}
+
                             <div className="flex justify-end gap-2 pt-3">
-                                <button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 bg-slate-200 font-bold uppercase rounded-xl">Cancel</button>
-                                <button type="submit" className="px-5 py-2 bg-[#081126] text-[#DCC8A8] font-bold uppercase rounded-xl hover:bg-slate-800">Add Staff</button>
+                                <button type="button" onClick={() => setEmployeeModal(null)} className="px-4 py-2 bg-slate-200 font-bold uppercase rounded-xl">Cancel</button>
+                                <button type="submit" className="px-5 py-2 bg-[#081126] text-[#DCC8A8] font-bold uppercase rounded-xl hover:bg-slate-800">
+                                    {employeeModal === 'create' ? 'Add Staff' : 'Save Changes'}
+                                </button>
                             </div>
                         </form>
                     </div>
