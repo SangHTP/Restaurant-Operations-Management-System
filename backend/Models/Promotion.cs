@@ -28,6 +28,8 @@ namespace backend.Models
         [Column(TypeName = "decimal(18, 0)")]
         public decimal MinOrderValue { get; set; } = 0;
 
+        public int Count { get; set; } = 0;
+
         public DateTime StartDate { get; set; }
 
         public DateTime EndDate { get; set; }

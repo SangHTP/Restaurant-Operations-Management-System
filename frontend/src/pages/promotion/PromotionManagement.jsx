@@ -8,6 +8,7 @@ const DEFAULT_FORM = {
     discountType: 'Percent',
     discountValue: 15,
     minOrderValue: 500000,
+    count: 0,
     startDate: new Date().toISOString().split('T')[0],
     endDate: '2026-12-31',
     isActive: false
@@ -62,6 +63,7 @@ export default function PromotionManagement() {
             discountType: promo.discountType,
             discountValue: promo.discountValue,
             minOrderValue: promo.minOrderValue,
+            count: promo.count ?? 0,
             startDate: formatDateForInput(promo.startDate),
             endDate: formatDateForInput(promo.endDate),
             isActive: promo.isActive
@@ -78,6 +80,7 @@ export default function PromotionManagement() {
             discountType: formPromo.discountType,
             discountValue: Number(formPromo.discountValue),
             minOrderValue: Number(formPromo.minOrderValue),
+            count: Number(formPromo.count),
             startDate: new Date(formPromo.startDate).toISOString(),
             endDate: new Date(formPromo.endDate).toISOString(),
             isActive: formPromo.isActive
@@ -127,6 +130,11 @@ export default function PromotionManagement() {
                 showToast("Đã qua ngày kết thúc, không thể mở khuyến mãi này!", "error");
                 return;
             }
+
+            if (promo.count <= 0) {
+                showToast("Mã này đã hết lượt sử dụng (Count = 0), không thể kích hoạt!", "error");
+                return;
+            }
         }
 
         const payload = {
@@ -135,6 +143,7 @@ export default function PromotionManagement() {
             discountType: promo.discountType,
             discountValue: promo.discountValue,
             minOrderValue: promo.minOrderValue,
+            count: promo.count,
             startDate: promo.startDate,
             endDate: promo.endDate,
             isActive: nextStatus
@@ -249,10 +258,23 @@ export default function PromotionManagement() {
                                     <span className="font-mono text-xs font-black text-amber-900 bg-amber-100 px-3 py-1 rounded-xl border border-amber-300">
                                         🎟️ {promo.code}
                                     </span>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                                        {/* Huy hiệu cảnh báo nguyên nhân Inactive */}
+                                        {promo.count <= 0 && (
+                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg bg-rose-100 text-rose-700 border border-rose-300">
+                                                Hết lượt
+                                            </span>
+                                        )}
+                                        {new Date(promo.endDate) < new Date() && (
+                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg bg-gray-100 text-gray-700 border border-gray-300">
+                                                Hết hạn
+                                            </span>
+                                        )}
+
+                                        {/* Trạng thái Active / Inactive */}
                                         <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-lg border ${promo.isActive
                                                 ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                                : 'bg-rose-100 text-rose-800 border-rose-300'
+                                                : 'bg-slate-100 text-slate-600 border-slate-300'
                                             }`}>
                                             {promo.isActive ? '● Active' : '✕ Inactive'}
                                         </span>
@@ -270,7 +292,11 @@ export default function PromotionManagement() {
                                     </p>
                                 </div>
 
-                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1 text-xs">
+                                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+                                    <div className="flex justify-between text-slate-500">
+                                        <span>Quantity Left:</span>
+                                        <span className="font-mono font-bold text-amber-700">{promo.count ?? 0} lượt</span>
+                                    </div>
                                     <div className="flex justify-between text-slate-500">
                                         <span>Min Bill Amount:</span>
                                         <span className="font-mono font-bold text-slate-800">{Number(promo.minOrderValue).toLocaleString('vi-VN')} đ</span>
@@ -374,16 +400,29 @@ export default function PromotionManagement() {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block font-bold text-slate-700 uppercase mb-1">Min Order Total (VND)</label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    value={formPromo.minOrderValue}
-                                    onChange={e => setFormPromo({ ...formPromo, minOrderValue: e.target.value })}
-                                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-mono"
-                                />
-                            </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-1">Min Order Total (VND)</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={formPromo.minOrderValue}
+                                                onChange={e => setFormPromo({ ...formPromo, minOrderValue: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-mono"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase mb-1">Voucher Quantity (Count)</label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                required
+                                                value={formPromo.count}
+                                                onChange={e => setFormPromo({ ...formPromo, count: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-xs font-mono font-bold"
+                                            />
+                                        </div>
+                                    </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div>

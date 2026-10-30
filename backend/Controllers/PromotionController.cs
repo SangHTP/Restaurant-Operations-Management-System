@@ -21,6 +21,21 @@ namespace backend.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAll([FromQuery] string? search, [FromQuery] bool? isActive)
         {
+            var now = DateTime.Now;
+
+            var invalidPromos = await _context.Promotions
+                .Where(p => p.IsActive && (p.EndDate < now || p.Count <= 0))
+                .ToListAsync();
+
+            if (invalidPromos.Any())
+            {
+                foreach (var promo in invalidPromos)
+                {
+                    promo.IsActive = false; 
+                }
+                await _context.SaveChangesAsync(); 
+            }
+
             var query = _context.Promotions.AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -88,6 +103,7 @@ namespace backend.Controllers
                 DiscountType = dto.DiscountType,
                 DiscountValue = dto.DiscountValue,
                 MinOrderValue = dto.MinOrderValue,
+                Count = dto.Count,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
                 IsActive = dto.IsActive
@@ -115,6 +131,10 @@ namespace backend.Controllers
 
             if (dto.IsActive)
             {
+                if (dto.Count <= 0)
+                {
+                    return BadRequest(new { message = "Số lượng mã đã bằng 0, không thể mở kích hoạt!" });
+                }
                 if (now.Date < dto.StartDate.Date)
                 {
                     return BadRequest(new { message = "Ngày bắt đầu chưa tới, không thể mở khuyến mãi này!" });
@@ -141,6 +161,7 @@ namespace backend.Controllers
             promo.DiscountType = dto.DiscountType;
             promo.DiscountValue = dto.DiscountValue;
             promo.MinOrderValue = dto.MinOrderValue;
+            promo.Count = dto.Count;
             promo.StartDate = dto.StartDate;
             promo.EndDate = dto.EndDate;
             promo.IsActive = dto.IsActive;
@@ -185,14 +206,24 @@ namespace backend.Controllers
                 return BadRequest(new { message = "Chương trình khuyến mãi chưa bắt đầu!" });
             }
 
-            if (now > promo.EndDate)
+            if (promo.IsActive && (promo.EndDate < now || promo.Count <= 0))
             {
-                return BadRequest(new { message = "Mã khuyến mãi đã hết hạn sử dụng!" });
+                promo.IsActive = false;
+                await _context.SaveChangesAsync();
+                return BadRequest(new
+                {
+                    message = promo.Count <= 0 ? "Mã khuyến mãi đã hết lượt sử dụng!" : "Mã khuyến mãi đã hết hạn sử dụng!"
+                });
             }
 
             if (dto.OrderAmount < promo.MinOrderValue)
             {
                 return BadRequest(new { message = $"Đơn hàng chưa đạt giá trị tối thiểu ({promo.MinOrderValue:N0} đ) để áp dụng mã này!" });
+            }
+
+            if (promo.Count <= 0)
+            {
+                return BadRequest(new { message = "Mã khuyến mãi này đã hết lượt sử dụng!" });
             }
 
             decimal discountAmount = 0;

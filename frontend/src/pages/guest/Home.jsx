@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowRight, Search, Sparkles } from 'lucide-react';
 import HeroCarousel from '../../components/home/HeroCarousel';
 import { mockFoods } from '../../data/mockFoods';
 import Card from '../../components/common/Card';
@@ -62,7 +63,7 @@ const PROMO_CARDS = [
         badge: 'NEBULA DEALS',
         title: 'Midnight BBQ & Hotpot Buffet',
         description: 'Pay 3 for 4 guests – Free Premium Galaxy Mocktail & VIP Room upgrade.',
-        price: 'From 399.000đ / guest',
+        price: 'From ₫399,000 per guest',
         ctaText: 'Explore Offer',
         ctaLink: '/menu',
         bgImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80',
@@ -105,7 +106,7 @@ export default function Home() {
                     <form onSubmit={handleSearchSubmit} className="bg-[#081126]/90 backdrop-blur-2xl border border-[#DCC8A8]/40 rounded-3xl p-3.5 sm:p-4 shadow-2xl shadow-black/70">
                         <div className="flex flex-col sm:flex-row gap-3">
                             <div className="flex-1 relative flex items-center">
-                                <span className="absolute left-4 text-[#DCC8A8]">🔍</span>
+                                <Search size={18} className="absolute left-4 text-[#DCC8A8]" aria-hidden="true" />
                                 <input
                                     type="text"
                                     value={searchQuery}
@@ -129,14 +130,13 @@ export default function Home() {
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-6 gap-2">
                         <div>
                             <span className="text-[11px] font-bold text-[#DCC8A8] uppercase tracking-[0.2em]">
-                                ✦ CURATED MENU ✦
+                                <span className="inline-flex items-center gap-2"><Sparkles size={14} /> CURATED MENU <Sparkles size={14} /></span>
                             </span>
                             <h2 className="text-2xl sm:text-3xl font-serif font-bold text-slate-900 mt-1">
                                 Explore By Category
                             </h2>
                         </div>
                         <p className="text-xs text-slate-500 max-w-xs">
-                            Indulge in our carefully crafted culinary selections prepared by 5-star master chefs.
                         </p>
                     </div>
 
@@ -170,7 +170,7 @@ export default function Home() {
                                     </h3>
                                     <div className="mt-2 pt-2 border-t border-white/15 flex items-center justify-between text-[11px] text-[#C4D0E3]">
                                         <span>{cat.count}</span>
-                                        <span className="font-bold text-[#DCC8A8] group-hover:translate-x-1 transition-transform">→</span>
+                                        <ArrowRight size={16} className="font-bold text-[#DCC8A8] transition-transform group-hover:translate-x-1" aria-hidden="true" />
                                     </div>
                                 </div>
                             </Link>
@@ -264,18 +264,20 @@ export default function Home() {
                                             alt={food.name}
                                             className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
                                         />
-                                        <div className="absolute top-3 left-3">
-                                            <span className="bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 font-bold text-[11px] px-2.5 py-1 rounded-lg shadow-md">
-                                                {food.discount}
-                                            </span>
-                                        </div>
+                                        {food.badge && (
+                                            <div className="absolute top-3 left-3">
+                                                <span className="bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 font-bold text-[11px] px-2.5 py-1 rounded-lg shadow-md">
+                                                    {food.badge}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="p-4">
                                         <h3 className="font-serif font-bold text-slate-900 text-base line-clamp-1 group-hover:text-amber-800 transition-colors">
                                             {food.name}
                                         </h3>
                                         <p className="text-sm font-black text-[#081126] mt-2">
-                                            {food.price.toLocaleString('vi-VN')} đ
+                                            {food.price.toLocaleString('en-US')} ₫
                                         </p>
                                     </div>
                                 </div>
