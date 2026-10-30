@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import IconGlyph from '../../components/common/IconGlyph';
+import { useConfirm } from '../../context/ConfirmContext';
 import customerAvatar from '../../assets/avartar/customer.jpg';
 import staffAvatar from '../../assets/avartar/staff.jpg';
 import chefAvatar from '../../assets/avartar/chef.jpeg';
@@ -104,6 +108,27 @@ export default function AccountManagement() {
         } finally {
             setIsSaving(false);
         }
+    // Toggle Lock / Unlock Account
+    const handleToggleLockStatus = async (accId) => {
+        const account = accounts.find((item) => item.id === accId);
+        if (account?.status === 'Active') {
+            const shouldLock = await confirm({
+                title: 'Lock this account?',
+                message: `${account.name} will not be able to sign in while the account is locked.`,
+                confirmText: 'Lock Account',
+            });
+            if (!shouldLock) return;
+        }
+        setAccounts((prev) =>
+            prev.map((acc) => {
+                if (acc.id === accId) {
+                    const newStatus = acc.status === 'Active' ? 'Locked' : 'Active';
+                    showToast(`Account ${acc.name} has been ${newStatus === 'Locked' ? 'LOCKED' : 'UNLOCKED'}`);
+                    return { ...acc, status: newStatus };
+                }
+                return acc;
+            })
+        );
     };
 
     const handleCreateAccountSubmit = async (e) => {
@@ -210,7 +235,7 @@ export default function AccountManagement() {
             <div className="bg-white p-4 rounded-3xl border border-stone-200 shadow-sm flex flex-col sm:flex-row gap-4 items-center justify-between">
                 {/* Search Input */}
                 <div className="w-full sm:w-80 relative flex items-center">
-                    <span className="absolute left-3.5 text-slate-400">🔍</span>
+                    <span className="absolute left-3.5 text-slate-400"><IconGlyph glyph="🔍" size={16} /></span>
                     <input
                         type="text"
                         placeholder="Search by name, email or phone..."
@@ -506,14 +531,9 @@ export default function AccountManagement() {
                                         title={showTempPassword ? "Hide password" : "Show password"}
                                     >
                                         {showTempPassword ? (
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                            </svg>
+                                            <EyeOff className="w-4 h-4" aria-hidden="true" />
                                         ) : (
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                            </svg>
+                                            <Eye className="w-4 h-4" aria-hidden="true" />
                                         )}
                                     </button>
                                 </div>
@@ -640,6 +660,42 @@ export default function AccountManagement() {
                                     <option value="Kitchen">Kitchen</option>
                                     {isElevated && <option value="Manager">Manager</option>}
                                 </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-slate-700 uppercase mb-1">Avatar Image</label>
+                                <div className="flex items-center gap-3 mb-2">
+                                    <img
+                                        src={editingAccount.avatar}
+                                        alt={editingAccount.name}
+                                        className="w-10 h-10 rounded-full object-cover border border-stone-300"
+                                    />
+                                    <label className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold border border-slate-300 rounded-xl text-[11px] cursor-pointer transition">
+                                        <IconGlyph glyph="📷" size={15} /> Upload New Image...
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const reader = new FileReader();
+                                                    reader.onloadend = () => {
+                                                        setEditingAccount(prev => ({ ...prev, avatar: reader.result }));
+                                                    };
+                                                    reader.readAsDataURL(file);
+                                                }
+                                            }}
+                                            className="hidden"
+                                        />
+                                    </label>
+                                </div>
+                                <input
+                                    type="text"
+                                    placeholder="Or paste Avatar URL..."
+                                    value={editingAccount.avatar}
+                                    onChange={(e) => setEditingAccount({ ...editingAccount, avatar: e.target.value })}
+                                    className="w-full bg-slate-50 border border-stone-300 rounded-xl px-3 py-1.5 text-xs font-mono focus:ring-2 focus:ring-[#DCC8A8] focus:outline-none"
+                                />
                             </div>
 
                             <div className="flex justify-end gap-2 pt-3">

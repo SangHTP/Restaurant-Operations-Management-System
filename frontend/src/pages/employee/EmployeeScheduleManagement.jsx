@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 import staffAvatar from '../../assets/avartar/staff.jpg';
 import chefAvatar from '../../assets/avartar/chef.jpeg';
 import { employeeApi } from '../../api/employeeApi';
@@ -297,9 +299,9 @@ export default function EmployeeScheduleManagement() {
             {/* TABS */}
             <div className="flex border-b border-slate-200 gap-4">
                 {[
-                    { id: 'roster', label: '👥 Staff Roster & Assignments' },
-                    { id: 'shifts', label: '📅 Shift Master List' },
-                    { id: 'availability', label: '📋 Work Availability' },
+                    { id: 'roster', label: 'Staff Roster & Assignments', icon: '👥' },
+                    { id: 'shifts', label: 'Shift Master List', icon: '📅' },
+                    { id: 'availability', label: 'Work Availability', icon: '📋' },
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -310,7 +312,7 @@ export default function EmployeeScheduleManagement() {
                                 : 'border-transparent text-slate-400 hover:text-slate-600'
                         }`}
                     >
-                        {tab.label}
+                        <><IconGlyph glyph={tab.icon} size={15} /> {tab.label}</>
                     </button>
                 ))}
             </div>
@@ -372,7 +374,7 @@ export default function EmployeeScheduleManagement() {
                                                 <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded border">{emp.role}</span>
                                             </div>
                                             <p className="text-xs text-slate-500 mt-0.5">
-                                                {emp.area} · {emp.position}
+                                                <IconGlyph glyph="📍" size={13} /> {emp.area} · <IconGlyph glyph="💼" size={13} /> {emp.position}
                                             </p>
                                         </div>
                                     </div>
@@ -495,9 +497,9 @@ export default function EmployeeScheduleManagement() {
                             <div key={sh.id} className="p-6 rounded-3xl border border-slate-200 bg-slate-50 space-y-3">
                                 <span className="text-[10px] font-mono text-amber-800 font-bold uppercase">{sh.id}</span>
                                 <h3 className="font-serif font-bold text-lg text-slate-900">{sh.name}</h3>
-                                <div className="text-xs text-slate-600 font-mono">⏱ {sh.time}</div>
+                                <div className="text-xs text-slate-600 font-mono"><IconGlyph glyph="⏱" size={13} /> {sh.time}</div>
                                 <div className="pt-2 border-t border-slate-200 text-xs font-bold text-indigo-900">
-                                    👥 Required Staff: {sh.count} employees
+                                    <IconGlyph glyph="👥" size={13} /> Required Staff: {sh.count} employees
                                 </div>
                             </div>
                         ))}
@@ -642,7 +644,7 @@ export default function EmployeeScheduleManagement() {
                 <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200 text-center animate-fadeIn">
                         <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-3 text-xl">
-                            ⚠️
+                            <IconGlyph glyph="⚠️" size={22} />
                         </div>
                         <h3 className="font-serif font-bold text-lg text-[#081126] mb-2">
                             {confirmModal.title}

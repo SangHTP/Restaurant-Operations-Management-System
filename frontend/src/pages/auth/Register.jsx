@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import logoApp from '../../assets/logo/logo.png';
 import { useAuth } from '../../context/AuthContext';
+import IconGlyph from '../../components/common/IconGlyph';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -69,7 +71,7 @@ export default function Register() {
         >
             <div className="w-full max-w-4xl bg-white/80 backdrop-blur-2xl border border-white/90 rounded-3xl shadow-2xl shadow-slate-900/10 overflow-hidden grid grid-cols-1 lg:grid-cols-12 relative z-10 min-h-[660px]">
 
-                {/* BRANDING BÊN TRÁI */}
+                {/* LEFT BRANDING PANEL */}
                 <div className="lg:col-span-5 bg-[#081126] relative p-8 flex flex-col justify-between overflow-hidden border-r border-[#DCC8A8]/20">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -79,9 +81,7 @@ export default function Register() {
                             to="/"
                             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/15 backdrop-blur-md text-[#fff8e7] text-xs font-bold tracking-wider transition-all duration-300 hover:border-[#DCC8A8]/60 group w-fit"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 text-[#DCC8A8] transition-transform duration-300 group-hover:-translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                            </svg>
+                            <ArrowLeft className="w-3.5 h-3.5 text-[#DCC8A8] transition-transform duration-300 group-hover:-translate-x-1" strokeWidth={2.5} aria-hidden="true" />
                             <span className="group-hover:text-[#DCC8A8] transition-colors font-serif uppercase tracking-widest text-[10px]">
                                 Home
                             </span>
@@ -110,7 +110,7 @@ export default function Register() {
                     </div>
                 </div>
 
-                {/* FORM ĐĂNG KÝ BÊN PHẢI */}
+                {/* RIGHT REGISTRATION FORM */}
                 <div className="lg:col-span-7 p-8 sm:p-12 flex flex-col justify-center bg-white/60 backdrop-blur-md">
                     <div className="max-w-md mx-auto w-full space-y-5">
                         <div>
@@ -124,7 +124,7 @@ export default function Register() {
 
                         {errorMessage && (
                             <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs font-semibold flex items-center gap-2 animate-fadeIn">
-                                <span className="text-base">⚠️</span>
+                                <IconGlyph glyph="⚠️" size={16} />
                                 <span>{errorMessage}</span>
                             </div>
                         )}
@@ -182,14 +182,9 @@ export default function Register() {
                                             title={showPassword ? "Hide password" : "Show password"}
                                         >
                                             {showPassword ? (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                </svg>
+                                                <EyeOff className="w-4 h-4" aria-hidden="true" />
                                             ) : (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
+                                                <Eye className="w-4 h-4" aria-hidden="true" />
                                             )}
                                         </button>
                                     </div>
@@ -215,14 +210,9 @@ export default function Register() {
                                             title={showConfirmPassword ? "Hide password" : "Show password"}
                                         >
                                             {showConfirmPassword ? (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                </svg>
+                                                <EyeOff className="w-4 h-4" aria-hidden="true" />
                                             ) : (
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                </svg>
+                                                <Eye className="w-4 h-4" aria-hidden="true" />
                                             )}
                                         </button>
                                     </div>
@@ -344,7 +334,7 @@ export default function Register() {
                                 onClick={() => handleSelectGoogleAccount('havanon@fpt.edu.vn')}
                                 className="w-full text-left p-2.5 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 flex items-center gap-3 cursor-pointer"
                             >
-                                <span className="w-8 text-center text-slate-400">👤</span>
+                                <span className="w-8 text-center text-slate-400"><IconGlyph glyph="👤" size={17} /></span>
                                 <span>Use another account</span>
                             </button>
                         </div>

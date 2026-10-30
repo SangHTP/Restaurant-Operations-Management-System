@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Check, Eye, EyeOff, Mail } from 'lucide-react';
 import logoApp from '../../assets/logo/logo.png';
+import IconGlyph from '../../components/common/IconGlyph';
 
 export default function ForgotPassword() {
     const navigate = useNavigate();
@@ -138,13 +140,13 @@ export default function ForgotPassword() {
                         {/* ERROR / SUCCESS ALERTS */}
                         {errorMessage && (
                             <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
-                                <span className="text-base">⚠️</span>
+                                <IconGlyph glyph="⚠️" size={16} />
                                 <span>{errorMessage}</span>
                             </div>
                         )}
                         {successMessage && (
                             <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex items-center gap-2.5 animate-fadeIn">
-                                <span className="text-base">✅</span>
+                                <IconGlyph glyph="✅" size={16} />
                                 <span>{successMessage}</span>
                             </div>
                         )}
@@ -168,9 +170,7 @@ export default function ForgotPassword() {
                                         </label>
                                         <div className="relative flex items-center">
                                             <div className="absolute left-3.5 pointer-events-none text-slate-400">
-                                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                                                </svg>
+                                                <Mail className="w-4 h-4" aria-hidden="true" />
                                             </div>
                                             <input
                                                 type="email"
@@ -301,14 +301,9 @@ export default function ForgotPassword() {
                                                 title={showPassword ? "Hide password" : "Show password"}
                                             >
                                                 {showPassword ? (
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                    </svg>
+                                                    <EyeOff className="w-4 h-4" aria-hidden="true" />
                                                 ) : (
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
+                                                    <Eye className="w-4 h-4" aria-hidden="true" />
                                                 )}
                                             </button>
                                         </div>
@@ -334,14 +329,9 @@ export default function ForgotPassword() {
                                                 title={showPassword ? "Hide password" : "Show password"}
                                             >
                                                 {showPassword ? (
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
-                                                    </svg>
+                                                    <EyeOff className="w-4 h-4" aria-hidden="true" />
                                                 ) : (
-                                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12c1.273-4.337 5.29-7.5 10.04-7.5 4.75 0 8.767 3.163 10.041 7.5-1.274 4.337-5.29 7.5-10.041 7.5-4.75 0-8.767-3.163-10.04-7.5z" />
-                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                    </svg>
+                                                    <Eye className="w-4 h-4" aria-hidden="true" />
                                                 )}
                                             </button>
                                         </div>
@@ -366,9 +356,7 @@ export default function ForgotPassword() {
                         {step === 4 && (
                             <div className="text-center py-4">
                                 <div className="w-16 h-16 bg-emerald-100 border border-emerald-300 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                    </svg>
+                                    <Check className="w-8 h-8" aria-hidden="true" />
                                 </div>
                                 <h2 className="font-serif text-2xl font-bold text-[#0b132b] mb-2">Password Changed!</h2>
                                 <p className="font-sans text-xs text-slate-500 mb-6 leading-relaxed">
@@ -389,9 +377,7 @@ export default function ForgotPassword() {
                                     to="/login"
                                     className="inline-flex items-center gap-1.5 text-xs font-extrabold text-slate-600 hover:text-[#0b132b] transition-colors"
                                 >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                                    </svg>
+                                    <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                                     <span>Back to Sign in</span>
                                 </Link>
                             </div>

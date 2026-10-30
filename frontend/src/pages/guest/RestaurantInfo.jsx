@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import IconGlyph from '../../components/common/IconGlyph';
 
 export default function RestaurantInfo() {
     const [activeTab, setActiveTab] = useState('overview');
@@ -31,14 +32,29 @@ export default function RestaurantInfo() {
                 </div>
             </div>
 
+            {/* QUICK STATS & HOURS */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+                {[
+                    { icon: '📍', label: 'Prime Location', value: '123 Boulevard, Ninh Kieu, Can Tho' },
+                    { icon: '🕒', label: 'Opening Hours', value: '09:00 AM – 11:00 PM Daily' },
+                    { icon: '📞', label: 'Reservation Hotline', value: '0900 000 888' },
+                    { icon: '👑', label: 'Culinary Distinction', value: 'Michelin Recommended 2026' },
+                ].map((item, idx) => (
+                    <div key={idx} className="bg-white p-6 rounded-3xl border border-stone-200 shadow-md hover:shadow-lg transition">
+                        <IconGlyph glyph={item.icon} size={30} className="mb-2" />
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">{item.label}</span>
+                        <p className="font-bold text-slate-800 text-sm mt-1">{item.value}</p>
+                    </div>
+                ))}
+            </div>
 
             {/* TABBED INFORMATION */}
             <div className="bg-white rounded-3xl border border-stone-200 shadow-lg p-6 sm:p-8">
                 <div className="flex border-b border-slate-200 gap-4 mb-6">
                     {[
-                        { id: 'overview', label: '✨ Culinary Vision' },
-                        { id: 'chef', label: '👨‍🍳 Executive Chef' },
-                        { id: 'contact', label: '📩 Contact & Inquiries' },
+                        { id: 'overview', label: 'Culinary Vision', icon: '✨' },
+                        { id: 'chef', label: 'Executive Chef', icon: '👨‍🍳' },
+                        { id: 'contact', label: 'Contact & Inquiries', icon: '📩' },
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -49,7 +65,7 @@ export default function RestaurantInfo() {
                                     : 'border-transparent text-slate-400 hover:text-slate-600'
                             }`}
                         >
-                            {tab.label}
+                            <><IconGlyph glyph={tab.icon} size={14} /> {tab.label}</>
                         </button>
                     ))}
                 </div>
@@ -108,7 +124,7 @@ export default function RestaurantInfo() {
                     <div className="max-w-xl mx-auto">
                         {submitted && (
                             <div className="mb-4 bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs p-4 rounded-2xl font-bold text-center">
-                                ✅ Thank you for reaching out! Our team will contact you within 24 hours.
+                                <IconGlyph glyph="✅" size={15} /> Thank you for reaching out! Our team will contact you within 24 hours.
                             </div>
                         )}
                         <form onSubmit={handleContactSubmit} className="space-y-4">

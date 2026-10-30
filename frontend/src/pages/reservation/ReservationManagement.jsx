@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import IconGlyph from '../../components/common/IconGlyph';
+import { useConfirm } from '../../context/ConfirmContext';
+import { CalendarDays, Clock3, FileText, MapPin, Phone, Users } from 'lucide-react';
 
 const INITIAL_RESERVATIONS = [
     {
@@ -62,6 +65,7 @@ const INITIAL_RESERVATIONS = [
 
 export default function ReservationManagement() {
     const { currentUser } = useAuth();
+    const confirm = useConfirm();
     const isStaffOrManager = currentUser?.role === 'Staff' || currentUser?.role === 'Manager' || currentUser?.role === 'Owner';
 
     const [reservations, setReservations] = useState(INITIAL_RESERVATIONS);
@@ -102,7 +106,16 @@ export default function ReservationManagement() {
         showToast(`Reservation ${newRes.id} created successfully`);
     };
 
-    const handleUpdateStatus = (id, nextStatus) => {
+    const handleUpdateStatus = async (id, nextStatus) => {
+        if (nextStatus === 'Cancelled') {
+            const reservation = reservations.find((item) => item.id === id);
+            const shouldCancel = await confirm({
+                title: 'Cancel this reservation?',
+                message: `Are you sure you want to cancel${reservation ? ` ${reservation.customerName}'s reservation` : ' this reservation'} (${id})?`,
+                confirmText: 'Cancel Reservation',
+            });
+            if (!shouldCancel) return;
+        }
         setReservations(prev => prev.map(r => r.id === id ? { ...r, status: nextStatus } : r));
         if (selectedRes?.id === id) setSelectedRes(prev => ({ ...prev, status: nextStatus }));
         showToast(`Reservation ${id} updated → ${nextStatus}`);
@@ -123,56 +136,63 @@ export default function ReservationManagement() {
             Seated: 'bg-indigo-100 text-indigo-800 border-indigo-300',
             Cancelled: 'bg-rose-100 text-rose-800 border-rose-300',
         };
+        const labels = {
+            Confirmed: 'Confirmed',
+            Pending: 'Pending',
+            Seated: 'Seated',
+            Cancelled: 'Cancelled',
+        };
         return (
-            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
-                ● {status}
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border ${styles[status] || 'bg-slate-100 text-slate-700'}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+                {labels[status] || status}
             </span>
         );
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 font-sans space-y-8">
+        <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 font-sans space-y-6">
 
             {/* TOAST */}
             {toast && (
                 <div className="fixed top-20 right-6 z-50 bg-[#081126] text-[#DCC8A8] border border-[#DCC8A8]/40 px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-bounce">
-                    <span className="font-black text-sm">✦</span>
+                    <IconGlyph glyph="✨" size={16} />
                     <span className="text-xs font-bold">{toast}</span>
                 </div>
             )}
 
             {/* HEADER */}
-            <div className="bg-[#081126] text-white p-8 rounded-3xl border border-[#DCC8A8]/20 shadow-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="bg-[#081126] text-white px-6 py-6 sm:px-8 rounded-2xl border border-[#DCC8A8]/20 shadow-lg flex flex-col md:flex-row justify-between items-start md:items-center gap-5 relative overflow-hidden">
+                <div className="absolute -top-24 -right-12 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="relative z-10">
-                    <span className="text-[10px] font-black uppercase text-[#DCC8A8] tracking-[0.3em]">
-                        ✦ TABLE RESERVATIONS & BOOKINGS ✦
+                    <span className="text-[11px] font-bold uppercase text-[#DCC8A8] tracking-[0.18em]">
+                        OPERATIONS · RESERVATIONS
                     </span>
-                    <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#F5F2EA] mt-1">
-                        Reservation Management Hub
+                    <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[#F5F2EA] mt-2">
+                        Reservation Management
                     </h1>
-                    <p className="text-xs text-[#8995AD] mt-1.5">
-                        Create, track, update, and manage table reservations in real-time.
+                    <p className="text-sm text-[#B7C0D1] mt-2">
+                        Manage bookings, confirm guests, and coordinate table assignments.
                     </p>
                 </div>
 
                 <button
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="relative z-10 px-5 py-3 bg-gradient-to-r from-[#DCC8A8] via-[#ebd9bd] to-[#DCC8A8] text-[#081126] font-extrabold text-xs uppercase tracking-wider rounded-2xl shadow-lg hover:scale-105 transition cursor-pointer"
+                    className="relative z-10 px-5 py-3 bg-[#DCC8A8] text-[#081126] font-bold text-sm rounded-xl shadow hover:bg-[#ebd9bd] transition cursor-pointer"
                 >
-                    + New Table Reservation
+                    + New Reservation
                 </button>
             </div>
 
             {/* SEARCH & FILTER TOOLBAR */}
-            <div className="bg-white p-5 rounded-3xl border border-stone-200 shadow-md flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
                 <div className="w-full md:w-80 relative">
                     <input
                         type="text"
-                        placeholder="Search guest name, phone, reservation ID..."
+                        placeholder="Search by guest name, phone number, or reservation ID..."
                         value={searchQuery}
                         onChange={e => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#DCC8A8]"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#DCC8A8]"
                     />
                 </div>
 
@@ -181,13 +201,13 @@ export default function ReservationManagement() {
                         <button
                             key={st}
                             onClick={() => setFilterStatus(st)}
-                            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer border ${
+                            className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition whitespace-nowrap cursor-pointer ${
                                 filterStatus === st
                                     ? 'bg-[#081126] text-[#DCC8A8] border-[#DCC8A8]'
                                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                             }`}
                         >
-                            {st}
+                            {{ All: 'All', Pending: 'Pending', Confirmed: 'Confirmed', Seated: 'Seated', Cancelled: 'Cancelled' }[st]}
                         </button>
                     ))}
                 </div>
@@ -197,38 +217,60 @@ export default function ReservationManagement() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* RESERVATION LIST (2 COLS) */}
-                <div className="lg:col-span-2 bg-white rounded-3xl border border-stone-200 shadow-lg overflow-hidden">
-                    <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-                        <h2 className="font-serif font-bold text-[#081126]">Reservations List</h2>
-                        <span className="text-xs text-slate-500 font-medium">{filteredReservations.length} total bookings</span>
+                <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="px-5 py-4 border-b border-slate-100 bg-slate-50/70 flex justify-between items-center">
+                        <div>
+                            <h2 className="font-serif font-bold text-[#081126]">Reservations</h2>
+                            <p className="text-xs text-slate-500 mt-1">Select a reservation to view its details.</p>
+                        </div>
+                        <span className="text-xs text-slate-500 font-medium">{filteredReservations.length} reservations</span>
                     </div>
 
                     <div className="divide-y divide-slate-100">
                         {filteredReservations.map(res => (
-                            <div
+                            <button
+                                type="button"
                                 key={res.id}
                                 onClick={() => setSelectedRes(res)}
-                                className={`p-5 hover:bg-slate-50 transition cursor-pointer flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${
-                                    selectedRes?.id === res.id ? 'bg-amber-50/60 border-l-4 border-[#081126]' : ''
+                                className={`w-full p-4 sm:px-5 sm:py-4 text-left transition cursor-pointer grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-l-[3px] ${
+                                    selectedRes?.id === res.id
+                                        ? 'bg-amber-50/70 border-l-[#081126]'
+                                        : 'bg-white hover:bg-slate-50 border-l-transparent'
                                 }`}
                             >
-                                <div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-mono text-xs font-black text-slate-400">{res.id}</span>
+                                <div className="min-w-0">
+                                    <div className="flex flex-wrap items-center gap-2.5">
+                                        <span className="font-mono text-[11px] font-bold tracking-wide text-slate-400">{res.id}</span>
                                         {getStatusBadge(res.status)}
                                     </div>
-                                    <h3 className="font-serif font-bold text-slate-900 text-lg mt-1">{res.customerName}</h3>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        📞 {res.phone} · 👥 {res.guests} Guests · 📍 {res.tableArea} ({res.tableNumber})
-                                    </p>
+                                    <h3 className="font-semibold text-slate-900 text-base mt-2">{res.customerName}</h3>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-xs text-slate-500">
+                                        <span className="inline-flex items-center gap-1.5"><Phone size={13} className="text-slate-400" />{res.phone}</span>
+                                        <span className="inline-flex items-center gap-1.5"><Users size={14} className="text-slate-400" />{res.guests} guests</span>
+                                        <span className="inline-flex items-center gap-1.5"><MapPin size={13} className="text-slate-400" />{res.tableArea} · Table {res.tableNumber}</span>
+                                    </div>
                                 </div>
 
-                                <div className="text-right sm:text-right">
-                                    <div className="text-xs font-black text-[#081126]">📅 {res.date} at {res.time}</div>
-                                    <span className="text-[10px] text-slate-400 block mt-1">Booked: {res.createdAt}</span>
+                                <div className="sm:min-w-[150px] sm:text-right border-t sm:border-t-0 border-slate-100 pt-3 sm:pt-0">
+                                    <div className="inline-flex sm:flex sm:justify-end items-center gap-2 text-sm font-bold text-[#081126]">
+                                        <CalendarDays size={15} className="text-amber-700" />
+                                        {res.date}
+                                    </div>
+                                    <div className="flex sm:justify-end items-center gap-1.5 text-xs text-slate-600 mt-1">
+                                        <Clock3 size={13} className="text-slate-400" />
+                                        {res.time}
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 block mt-1.5">Booked {res.createdAt}</span>
                                 </div>
-                            </div>
+                            </button>
                         ))}
+                        {filteredReservations.length === 0 && (
+                            <div className="px-5 py-12 text-center">
+                                <CalendarDays size={28} className="mx-auto text-slate-300 mb-2" />
+                                <p className="text-sm font-semibold text-slate-700">No reservations found</p>
+                                <p className="text-xs text-slate-500 mt-1">Try changing your search or status filter.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -239,7 +281,7 @@ export default function ReservationManagement() {
                             <div className="border-b border-slate-100 pb-4">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reservation Detail</span>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Reservation Details</span>
                                         <h3 className="font-serif text-2xl font-bold text-[#081126] mt-0.5">{selectedRes.customerName}</h3>
                                     </div>
                                     {getStatusBadge(selectedRes.status)}
@@ -248,7 +290,7 @@ export default function ReservationManagement() {
 
                             <div className="space-y-3 text-xs">
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Info</span>
+                                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Contact Information</span>
                                     <p className="font-bold text-slate-800 mt-0.5">Phone: {selectedRes.phone}</p>
                                     <p className="text-slate-600">Email: {selectedRes.email}</p>
                                 </div>
@@ -260,26 +302,26 @@ export default function ReservationManagement() {
                                     </div>
                                     <div>
                                         <span className="text-slate-400 block text-[10px] uppercase font-bold">Party Size</span>
-                                        <p className="font-bold text-slate-800 mt-0.5">👥 {selectedRes.guests} People</p>
+                                        <p className="font-bold text-slate-800 mt-0.5"><IconGlyph glyph="👥" size={14} /> {selectedRes.guests} guests</p>
                                     </div>
                                 </div>
 
                                 <div className="bg-slate-50 p-3 rounded-2xl border border-slate-200">
-                                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Assigned Table</span>
-                                    <p className="font-bold text-indigo-900 mt-0.5">🏛️ {selectedRes.tableArea} — Table {selectedRes.tableNumber}</p>
+                                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Area & Table</span>
+                                    <p className="font-bold text-indigo-900 mt-0.5"><IconGlyph glyph="🏛️" size={14} /> {selectedRes.tableArea} — Table {selectedRes.tableNumber}</p>
                                 </div>
 
                                 {selectedRes.note && (
                                     <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200">
-                                        <span className="text-amber-600 block text-[10px] uppercase font-bold">Guest Request / Note</span>
-                                        <p className="text-amber-900 font-medium mt-0.5">📝 {selectedRes.note}</p>
+                                        <span className="text-amber-600 block text-[10px] uppercase font-bold">Requests / Notes</span>
+                                        <p className="text-amber-900 font-medium mt-0.5"><IconGlyph glyph="📝" size={14} /> {selectedRes.note}</p>
                                     </div>
                                 )}
                             </div>
 
                             {/* ACTIONS */}
                             <div className="pt-2 space-y-2">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Update Reservation Status</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Update Status</span>
                                 <div className="grid grid-cols-2 gap-2">
                                     <button
                                         onClick={() => handleUpdateStatus(selectedRes.id, 'Confirmed')}
@@ -303,10 +345,12 @@ export default function ReservationManagement() {
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-3xl border border-dashed border-slate-300 p-8 text-center text-slate-400">
-                            <span className="text-4xl block mb-2">📋</span>
-                            <p className="font-serif font-bold text-slate-600 text-sm">Select a reservation</p>
-                            <p className="text-xs mt-1">to view details and update booking status</p>
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center sticky top-20">
+                            <div className="h-12 w-12 mx-auto mb-3 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
+                                <FileText size={22} />
+                            </div>
+                            <p className="font-semibold text-slate-700 text-sm">Select a reservation</p>
+                            <p className="text-xs text-slate-500 mt-1">Reservation details and available actions will appear here.</p>
                         </div>
                     )}
                 </div>
@@ -319,7 +363,7 @@ export default function ReservationManagement() {
                     <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200">
                         <div className="flex justify-between items-center pb-3 border-b border-stone-200">
                             <h3 className="font-serif font-bold text-lg text-[#081126]">New Table Reservation</h3>
-                            <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+                            <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700 font-bold"><IconGlyph glyph="✕" /></button>
                         </div>
 
                         <form onSubmit={handleCreateReservation} className="space-y-4 mt-4 text-xs">
