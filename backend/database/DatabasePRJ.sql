@@ -101,14 +101,33 @@ GO
 -- ============================================================
 -- 9. Bảng Nhân viên (Employees)
 -- ============================================================
-CREATE TABLE [dbo].[Employees](
-	[EmployeeID] [int] IDENTITY(1,1) NOT NULL PRIMARY KEY,
-	[RoleID] [int] NOT NULL FOREIGN KEY REFERENCES [dbo].[Roles] ([RoleID]),
-	[FullName] [nvarchar](100) NOT NULL,
-	[Phone] [varchar](15) NOT NULL UNIQUE,
-	[Email] [varchar](100) NULL UNIQUE,
-	[CreatedAt] [datetime] DEFAULT (getdate()),
-	[DepartmentID] [int] NULL FOREIGN KEY REFERENCES [dbo].[Departments] ([DepartmentID])
+CREATE TABLE dbo.Employees (
+    EmployeeID   int IDENTITY(1,1) NOT NULL,
+    RoleID       int NOT NULL,
+    FullName     nvarchar(100) NOT NULL,
+    Phone        varchar(15) NOT NULL,
+    Email        varchar(100) NULL,
+    CreatedAt    datetime NULL
+        CONSTRAINT DF_Employees_CreatedAt DEFAULT (GETDATE()),
+    DepartmentID int NULL,
+    IsActive     bit NOT NULL
+        CONSTRAINT DF_Employees_IsActive DEFAULT (1),
+    Position     nvarchar(100) NULL,
+
+    CONSTRAINT PK_Employees
+        PRIMARY KEY (EmployeeID),
+
+    CONSTRAINT UQ_Employees_Phone
+        UNIQUE (Phone),
+
+    CONSTRAINT UQ_Employees_Email
+        UNIQUE (Email),
+
+    CONSTRAINT FK_Employees_Roles
+        FOREIGN KEY (RoleID) REFERENCES dbo.Roles(RoleID),
+
+    CONSTRAINT FK_Employees_Departments
+        FOREIGN KEY (DepartmentID) REFERENCES dbo.Departments(DepartmentID)
 );
 GO
 
