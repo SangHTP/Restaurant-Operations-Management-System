@@ -13,8 +13,8 @@ public class OrdersController : ControllerBase
 {
     private static readonly string[] OrderStatuses =
     {
-        "In Progress",
-        "Pending Payment",
+        "Pending",
+        "Serving",
         "Completed",
         "Cancelled"
     };
@@ -219,7 +219,7 @@ public class OrdersController : ControllerBase
             {
                 EmployeeID = request.EmployeeID,
                 OrderTime = now,
-                Status = "In Progress",
+                Status = "Serving",
 
                 OrderTables = tableIds
                     .Select(id => new OrderTable
@@ -241,12 +241,16 @@ public class OrdersController : ControllerBase
                             ? null
                             : item.Note.Trim(),
 
-                        Status = "Pending Preparation",
+                        Status = "Chờ chế biến",
                         OrderTime = now
                     })
                     .ToList()
             };
-
+            Console.WriteLine("========== CREATE ORDER DEBUG ==========");
+            Console.WriteLine($"Status before save: [{order.Status}]");
+            Console.WriteLine($"Database: {_db.Database.GetDbConnection().Database}");
+            Console.WriteLine($"Server: {_db.Database.GetDbConnection().DataSource}");
+            Console.WriteLine("========================================");
             _db.Orders.Add(order);
 
             // The SQL trigger may deduct inventory when order details are saved.
