@@ -12,7 +12,7 @@ async function request(path, options = {}) {
             },
         });
     } catch {
-        throw new Error('Cannot connect to the API. Make sure the backend is running at http://localhost:5000.');
+        throw new Error('Cannot connect to the API. Make sure the backend is running at http://localhost:5249.');
     }
 
     if (!response.ok) {

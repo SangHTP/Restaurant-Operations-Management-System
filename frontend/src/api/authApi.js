@@ -1,4 +1,4 @@
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5249/api';
 
 async function request(path, options = {}) {
     let response;
@@ -12,7 +12,7 @@ async function request(path, options = {}) {
             },
         });
     } catch {
-        throw new Error('Cannot connect to the API. Make sure the backend is running at http://localhost:5000.');
+        throw new Error('Cannot connect to the API. Make sure the backend is running at http://localhost:5249.');
     }
 
     if (!response.ok) {
