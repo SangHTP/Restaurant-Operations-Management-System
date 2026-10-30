@@ -97,7 +97,20 @@ The Account Management page also loads employee accounts and customer records fr
 | `PUT` | `/api/accounts/{accountType}/{id}` | Update account profile and username |
 | `PATCH` | `/api/accounts/{accountType}/{id}/status` | Activate or deactivate an account |
 
-New account passwords are hashed by the API using PBKDF2; password hashes are never returned. Existing customer rows can be listed before credentials are added; set a unique username before editing them. Customer sign-in and password reset are not integrated.
+New account passwords are hashed by the API using PBKDF2; password hashes are never returned. When an Employee account is created, the API generates an 8-character temporary password containing lowercase, uppercase, a digit, and a special character, then emails the username and password to the required employee email address. The password is not accepted from or returned to the browser. Account creation is rolled back if credential email delivery fails. Customer accounts continue to use a password entered in the form; customer sign-in and password reset are not integrated.
+
+Employee credential email is sent from `NgocHong.616199@gmail.com` through the Gmail API using OAuth 2.0. No Gmail or App Password is used. Enable the Gmail API in a Google Cloud project, configure an OAuth consent screen and OAuth client, and authorize the sender account with the `https://www.googleapis.com/auth/gmail.send` scope. The OAuth client must allow the redirect URI `https://developers.google.com/oauthplayground` if using Google's OAuth Playground to grant consent and obtain a refresh token. In OAuth Playground settings, select "Use your own OAuth credentials" and enter the project's client ID and secret before authorizing. Keep the refresh token and OAuth client secret private.
+
+Configure these values in the API process environment before creating employee accounts; do not put OAuth secrets or refresh tokens in `appsettings.json` or source control:
+
+```powershell
+$env:Mail__GoogleClientId = Read-Host "Google OAuth client ID"
+$env:Mail__GoogleClientSecret = Read-Host "Google OAuth client secret"
+$env:Mail__GoogleRefreshToken = Read-Host "Google OAuth refresh token"
+& "C:\Program Files\dotnet\dotnet.exe" run --project .\backend\src\Services\Employee\Employee.Api.csproj
+```
+
+The API exchanges the refresh token for a short-lived access token and sends messages with the Gmail `users.messages.send` API. If the OAuth consent screen is in External/Testing mode, Google may expire refresh tokens after seven days; use a suitable production consent configuration or reauthorize when required. If OAuth configuration is missing, consent is revoked, or Gmail rejects the request, the API returns an error and does not create the Employee account. See Google's [Gmail sending guide](https://developers.google.com/workspace/gmail/api/guides/sending) and [OAuth 2.0 web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server).
 
 ## Kitchen order queue
 

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Eye, EyeOff, UserRound, X } from 'lucide-react';
 import logoApp from '../../assets/logo/logo.png';
-import { useAuth } from '../../context/AuthContext';
 import { useAuth, MOCK_ACCOUNTS_DB } from '../../context/AuthContext';
 import IconGlyph from '../../components/common/IconGlyph';
 

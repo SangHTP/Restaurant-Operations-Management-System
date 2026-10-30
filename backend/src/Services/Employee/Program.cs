@@ -1,12 +1,15 @@
 using System.Data;
+using System.Net.Mail;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.Data.SqlClient;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddHttpClient();
 var connectionString = builder.Configuration.GetConnectionString("RestaurantDb");
 if (string.IsNullOrWhiteSpace(connectionString))
 {
@@ -696,10 +699,12 @@ app.MapGet("/api/accounts", async (HttpContext context, CancellationToken cancel
     return Results.Ok(accounts);
 }).RequireAuthorization();
 
-app.MapPost("/api/accounts", async (AccountCreateRequest request, HttpContext context, CancellationToken cancellationToken) =>
+app.MapPost("/api/accounts", async (
+    AccountCreateRequest request,
+    HttpContext context,
+    IHttpClientFactory httpClientFactory,
+    CancellationToken cancellationToken) =>
 {
-    var validation = ValidateAccount(request);
-    if (validation is not null) return Results.ValidationProblem(validation);
     if (request.AccountType is not ("Employee" or "Customer"))
     {
         return Results.ValidationProblem(new Dictionary<string, string[]>
@@ -707,6 +712,11 @@ app.MapPost("/api/accounts", async (AccountCreateRequest request, HttpContext co
             ["accountType"] = ["Account type must be Employee or Customer."]
         });
     }
+    var validation = ValidateAccount(
+        request,
+        requirePassword: request.AccountType == "Customer",
+        requireEmail: request.AccountType == "Employee");
+    if (validation is not null) return Results.ValidationProblem(validation);
     var actorRole = context.User.FindFirstValue(ClaimTypes.Role);
     var isElevated = IsElevatedRole(actorRole);
     var managerDepartmentId = GetDepartmentId(context.User);
@@ -748,7 +758,21 @@ app.MapPost("/api/accounts", async (AccountCreateRequest request, HttpContext co
         });
     }
 
-    var passwordHash = HashPassword(request.Password);
+    GoogleOAuthSettings? googleOAuthSettings = null;
+    string? generatedPassword = null;
+    if (request.AccountType == "Employee")
+    {
+        if (!TryGetGoogleOAuthSettings(builder.Configuration, out googleOAuthSettings))
+        {
+            return Results.Problem(
+                "Employee email delivery is not configured. Configure the Gmail OAuth environment variables and try again.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+        generatedPassword = GenerateTemporaryPassword();
+    }
+
+    var password = generatedPassword ?? request.Password!;
+    var passwordHash = HashPassword(password);
     await using var connection = new SqlConnection(connectionString);
     await connection.OpenAsync(cancellationToken);
     await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
@@ -816,11 +840,35 @@ app.MapPost("/api/accounts", async (AccountCreateRequest request, HttpContext co
         await accountCommand.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    if (request.AccountType == "Employee")
+    {
+        try
+        {
+            await SendEmployeeCredentialsAsync(
+                httpClientFactory,
+                googleOAuthSettings!,
+                request.Email!,
+                request.FullName.Trim(),
+                request.Username.Trim(),
+                generatedPassword!,
+                cancellationToken);
+        }
+        catch (CredentialEmailException exception)
+        {
+            app.Logger.LogError(exception, "Could not email generated credentials for employee account {Username}.", request.Username);
+            await transaction.RollbackAsync(cancellationToken);
+            return Results.Problem(
+                "The account was not created because Gmail could not send its credentials. Check the Gmail API and OAuth configuration, then try again.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
+        }
+    }
+
     await transaction.CommitAsync(cancellationToken);
     return Results.Created($"/api/accounts/{request.AccountType.ToLowerInvariant()}/{accountId}", new
     {
         accountId,
-        accountType = request.AccountType
+        accountType = request.AccountType,
+        credentialsEmailSent = request.AccountType == "Employee"
     });
 }).RequireAuthorization();
 
@@ -1263,7 +1311,10 @@ static async Task<(bool Allowed, bool NotFound)> CanManageEmployeeRecord(
             : (false, false);
 }
 
-static Dictionary<string, string[]>? ValidateAccount(AccountCreateRequest request)
+static Dictionary<string, string[]>? ValidateAccount(
+    AccountCreateRequest request,
+    bool requirePassword,
+    bool requireEmail)
 {
     var errors = new Dictionary<string, string[]>();
     if (string.IsNullOrWhiteSpace(request.FullName) || request.FullName.Trim().Length > 100)
@@ -1272,12 +1323,14 @@ static Dictionary<string, string[]>? ValidateAccount(AccountCreateRequest reques
         errors["phone"] = ["Phone is required and must not exceed 15 characters."];
     if (string.IsNullOrWhiteSpace(request.Username) || request.Username.Trim().Length > 50)
         errors["username"] = ["Username is required and must not exceed 50 characters."];
-    if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+    if (requirePassword && (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8))
         errors["password"] = ["Password must contain at least 8 characters."];
     if (string.IsNullOrWhiteSpace(request.RoleName) || request.RoleName.Trim().Length > 50)
         errors["roleName"] = ["A valid role is required."];
-    if (!string.IsNullOrWhiteSpace(request.Email) &&
-        (request.Email.Length > 100 || !System.Net.Mail.MailAddress.TryCreate(request.Email, out _)))
+    if (requireEmail && string.IsNullOrWhiteSpace(request.Email))
+        errors["email"] = ["An email address is required to send employee login credentials."];
+    else if (!string.IsNullOrWhiteSpace(request.Email) &&
+             (request.Email.Length > 100 || !MailAddress.TryCreate(request.Email, out _)))
         errors["email"] = ["Email must be a valid address of at most 100 characters."];
     return errors.Count == 0 ? null : errors;
 }
@@ -1327,6 +1380,148 @@ static string HashPassword(string password)
     var salt = RandomNumberGenerator.GetBytes(16);
     var hash = Rfc2898DeriveBytes.Pbkdf2(password, salt, iterations, HashAlgorithmName.SHA256, 32);
     return $"PBKDF2-SHA256${iterations}${Convert.ToBase64String(salt)}${Convert.ToBase64String(hash)}";
+}
+
+static string GenerateTemporaryPassword()
+{
+    const string lowercase = "abcdefghijkmnopqrstuvwxyz";
+    const string uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const string digits = "23456789";
+    const string special = "!@#$%&*+-_";
+    var allCharacters = lowercase + uppercase + digits + special;
+    var password = new char[8];
+
+    password[0] = lowercase[RandomNumberGenerator.GetInt32(lowercase.Length)];
+    password[1] = uppercase[RandomNumberGenerator.GetInt32(uppercase.Length)];
+    password[2] = digits[RandomNumberGenerator.GetInt32(digits.Length)];
+    password[3] = special[RandomNumberGenerator.GetInt32(special.Length)];
+    for (var index = 4; index < password.Length; index++)
+        password[index] = allCharacters[RandomNumberGenerator.GetInt32(allCharacters.Length)];
+
+    for (var index = password.Length - 1; index > 0; index--)
+    {
+        var swapIndex = RandomNumberGenerator.GetInt32(index + 1);
+        (password[index], password[swapIndex]) = (password[swapIndex], password[index]);
+    }
+
+    return new string(password);
+}
+
+static bool TryGetGoogleOAuthSettings(IConfiguration configuration, out GoogleOAuthSettings settings)
+{
+    var clientId = configuration["Mail:GoogleClientId"];
+    var clientSecret = configuration["Mail:GoogleClientSecret"];
+    var refreshToken = configuration["Mail:GoogleRefreshToken"];
+
+    if (string.IsNullOrWhiteSpace(clientId) ||
+        string.IsNullOrWhiteSpace(clientSecret) ||
+        string.IsNullOrWhiteSpace(refreshToken))
+    {
+        settings = null!;
+        return false;
+    }
+
+    settings = new GoogleOAuthSettings(clientId.Trim(), clientSecret, refreshToken.Trim());
+    return true;
+}
+
+static async Task SendEmployeeCredentialsAsync(
+    IHttpClientFactory httpClientFactory,
+    GoogleOAuthSettings settings,
+    string recipient,
+    string fullName,
+    string username,
+    string password,
+    CancellationToken cancellationToken)
+{
+    using var client = httpClientFactory.CreateClient();
+    client.Timeout = TimeSpan.FromSeconds(15);
+
+    string accessToken;
+    try
+    {
+        using var tokenResponse = await client.PostAsync(
+            "https://oauth2.googleapis.com/token",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["client_id"] = settings.ClientId,
+                ["client_secret"] = settings.ClientSecret,
+                ["refresh_token"] = settings.RefreshToken,
+                ["grant_type"] = "refresh_token"
+            }),
+            cancellationToken);
+        if (!tokenResponse.IsSuccessStatusCode)
+            throw new CredentialEmailException($"Google OAuth token request returned HTTP {(int)tokenResponse.StatusCode}.");
+
+        await using var tokenStream = await tokenResponse.Content.ReadAsStreamAsync(cancellationToken);
+        using var tokenDocument = await JsonDocument.ParseAsync(tokenStream, cancellationToken: cancellationToken);
+        if (!tokenDocument.RootElement.TryGetProperty("access_token", out var accessTokenElement) ||
+            accessTokenElement.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(accessTokenElement.GetString()))
+        {
+            throw new CredentialEmailException("Google OAuth response did not contain an access token.");
+        }
+        accessToken = accessTokenElement.GetString()!;
+    }
+    catch (CredentialEmailException)
+    {
+        throw;
+    }
+    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or JsonException)
+    {
+        throw new CredentialEmailException("Could not obtain a Google OAuth access token.", exception);
+    }
+
+    const string senderAddress = "NgocHong.616199@gmail.com";
+    var recipientAddress = new MailAddress(recipient).Address;
+    var messageBody = $"""
+        Hello {fullName},
+
+        Your employee account has been created.
+
+        Username: {username}
+        Temporary password: {password}
+
+        Please keep these credentials private.
+        """;
+    var subject = Convert.ToBase64String(Encoding.UTF8.GetBytes("Your restaurant employee account"));
+    var encodedBody = Convert.ToBase64String(Encoding.UTF8.GetBytes(messageBody));
+    var mimeMessage = string.Join("\r\n",
+        $"From: Restaurant Operations <{senderAddress}>",
+        $"To: {recipientAddress}",
+        $"Subject: =?UTF-8?B?{subject}?=",
+        "MIME-Version: 1.0",
+        "Content-Type: text/plain; charset=UTF-8",
+        "Content-Transfer-Encoding: base64",
+        "",
+        encodedBody);
+    var rawMessage = Convert.ToBase64String(Encoding.UTF8.GetBytes(mimeMessage))
+        .TrimEnd('=')
+        .Replace('+', '-')
+        .Replace('/', '_');
+
+    try
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages/send");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(new { raw = rawMessage }),
+            Encoding.UTF8,
+            "application/json");
+        using var response = await client.SendAsync(request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+            throw new CredentialEmailException($"Gmail API send request returned HTTP {(int)response.StatusCode}.");
+    }
+    catch (CredentialEmailException)
+    {
+        throw;
+    }
+    catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException)
+    {
+        throw new CredentialEmailException("Could not send credentials through the Gmail API.", exception);
+    }
 }
 
 static bool VerifyPassword(string password, string? encodedHash)
@@ -1389,12 +1584,17 @@ internal sealed record AccountBootstrapRequest(
 internal sealed record AccountCreateRequest(
     string AccountType,
     string Username,
-    string Password,
+    string? Password,
     string FullName,
     string Phone,
     string? Email,
     string RoleName,
     int? DepartmentId);
+
+internal sealed record GoogleOAuthSettings(string ClientId, string ClientSecret, string RefreshToken);
+
+internal sealed class CredentialEmailException(string message, Exception? innerException = null)
+    : Exception(message, innerException);
 
 internal sealed record AccountUpdateRequest(
     string Username,

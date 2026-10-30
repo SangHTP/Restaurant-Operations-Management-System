@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useState } from 'react';
 import IconGlyph from '../../components/common/IconGlyph';
 import staffAvatar from '../../assets/avartar/staff.jpg';
 import chefAvatar from '../../assets/avartar/chef.jpeg';
