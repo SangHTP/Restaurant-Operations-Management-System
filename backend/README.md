@@ -18,30 +18,32 @@ Run these scripts against `RestaurantDB_Final` after creating the base schema:
 
 ## Configure and run
 
-The local development connection string in `src/Services/Employee/appsettings.json` targets `localhost\SQLEXPRESS` using Windows Authentication. Start the API from the repository root:
+The local development connection string in `appsettings.json` targets `localhost\SQLEXPRESS` using Windows Authentication. Start the combined API from the repository root:
 
 ```powershell
-dotnet run --project backend/src/Services/Employee/Employee.Api.csproj
+dotnet run --project backend/backend.csproj --urls http://localhost:5249
 ```
 
-The launch profile serves HTTP at `http://localhost:5000`, which is the frontend API default. Windows Authentication uses the Windows account running the API; ensure that account can access `RestaurantDB_Final`. If your SQL Server instance has a different name, override the connection string in PowerShell before starting:
+The backend hosts both the restaurant controllers and employee/account/authentication endpoints at `http://localhost:5249`. Windows Authentication uses the Windows account running the API; ensure that account can access `RestaurantDB_Final`. If your SQL Server instance has a different name, override both connection-string environment variables before starting:
 
 ```powershell
-$env:ConnectionStrings__RestaurantDb = "Server=YOUR-PC\SQLEXPRESS;Database=RestaurantDB_Final;Trusted_Connection=True;TrustServerCertificate=True"
-dotnet run --project backend/src/Services/Employee/Employee.Api.csproj
+$connectionString = "Server=YOUR-PC\SQLEXPRESS;Database=RestaurantDB_Final;Trusted_Connection=True;TrustServerCertificate=True"
+$env:ConnectionStrings__DefaultConnection = $connectionString
+$env:ConnectionStrings__RestaurantDb = $connectionString
+dotnet run --project backend/backend.csproj --urls http://localhost:5249
 ```
 
 For SQL Server authentication, keep credentials in a local secret store or environment variables; do not commit them to `appsettings.json`.
 
-The API uses the configured Vite development origins in `src/Services/Employee/appsettings.json`. To point the frontend at another API URL, set `VITE_API_BASE_URL` in the frontend environment (default: `http://localhost:5000/api`).
+The API allows the Vite development origins `http://localhost:5173` and `http://127.0.0.1:5173`. To point the frontend at another API URL, set `VITE_API_BASE_URL` in the frontend environment (default: `http://localhost:5249/api`).
 
 ## Initial Owner/Admin setup
 
 The first elevated account must be bootstrapped once because Owner/Admin accounts cannot be created through normal account management. Start the API with a one-time local bootstrap key in the API process environment:
 
 ```powershell
-$env:AccountBootstrap__Key = "replace-with-a-long-random-one-time-key"
-& "C:\Program Files\dotnet\dotnet.exe" run --project .\backend\src\Services\Employee\Employee.Api.csproj
+$env:AccountBootstrap__Key = Read-Host "One-time bootstrap key"
+dotnet run --project .\backend\backend.csproj --urls http://localhost:5249
 ```
 
 In another PowerShell window, use the same key and create the initial Admin account. The password is prompted securely instead of being written into command history:
@@ -60,7 +62,7 @@ try {
         phone = "0900000000"
         email = "admin@example.com"
     } | ConvertTo-Json
-    Invoke-RestMethod -Uri "http://localhost:5000/api/auth/bootstrap" -Method Post -ContentType "application/json" -Body $body
+    Invoke-RestMethod -Uri "http://localhost:5249/api/auth/bootstrap" -Method Post -ContentType "application/json" -Body $body
 }
 finally {
     [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($passwordPointer)
@@ -107,7 +109,7 @@ Configure these values in the API process environment before creating employee a
 $env:Mail__GoogleClientId = Read-Host "Google OAuth client ID"
 $env:Mail__GoogleClientSecret = Read-Host "Google OAuth client secret"
 $env:Mail__GoogleRefreshToken = Read-Host "Google OAuth refresh token"
-& "C:\Program Files\dotnet\dotnet.exe" run --project .\backend\src\Services\Employee\Employee.Api.csproj
+dotnet run --project .\backend\backend.csproj --urls http://localhost:5249
 ```
 
 The API exchanges the refresh token for a short-lived access token and sends messages with the Gmail `users.messages.send` API. If the OAuth consent screen is in External/Testing mode, Google may expire refresh tokens after seven days; use a suitable production consent configuration or reauthorize when required. If OAuth configuration is missing, consent is revoked, or Gmail rejects the request, the API returns an error and does not create the Employee account. See Google's [Gmail sending guide](https://developers.google.com/workspace/gmail/api/guides/sending) and [OAuth 2.0 web-server flow](https://developers.google.com/identity/protocols/oauth2/web-server).

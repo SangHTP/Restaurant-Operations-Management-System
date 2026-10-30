@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import IconGlyph from '../../components/common/IconGlyph';
 
-const BASE_URL = 'https://localhost:7176/api';
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5249/api';
 const API_BILL_URL = `${BASE_URL}/Bill`;
 const API_PROMO_URL = `${BASE_URL}/Promotion`;
 

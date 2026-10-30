@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'https://localhost:7176/api/Promotion';
+const API_BASE_URL = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5249/api'}/Promotion`;
 
 const DEFAULT_FORM = {
     code: '',
