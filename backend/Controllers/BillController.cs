@@ -86,20 +86,17 @@ namespace backend.Controllers
 
             if (bill == null) return NotFound(new { message = "Không tìm thấy hóa đơn!" });
 
-            // 1. Lấy thông tin thanh toán từ bảng Payments
-            var payment = await _context.Bills.FirstOrDefaultAsync(p => p.BillID == id);
-
-            // 2. Lấy thông tin bàn qua OrderTables
+            // Lấy thông tin bàn qua OrderTables.
             var tableName = await (from ot in _context.Set<OrderTable>()
                                    where ot.OrderID == bill.OrderID
                                    join t in _context.Set<Table>() on ot.TableID equals t.TableID
                                    select t.TableName).FirstOrDefaultAsync() ?? "Mang về / Bàn trống";
 
-            // 3. Lấy tên nhân viên thu ngân
+            // Lấy tên nhân viên thu ngân.
             var employee = await _context.Set<Employee>().FindAsync(bill.CreatedBy);
             string cashierName = employee != null ? employee.FullName : "Thu ngân quầy";
 
-            // 4. Lấy danh sách từng món ăn của Order này
+            // Lấy danh sách từng món ăn của đơn hàng.
             var items = await (from od in _context.Set<OrderDetail>()
                                where od.OrderID == bill.OrderID
                                join m in _context.Set<MenuItem>() on od.MenuItemID equals m.MenuItemID
@@ -136,6 +133,16 @@ namespace backend.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateBill([FromBody] CreateBillDto dto)
         {
+            var employeeExists = await _context.Set<Employee>()
+                .AnyAsync(employee => employee.EmployeeID == dto.EmployeeID);
+            if (!employeeExists)
+            {
+                return BadRequest(new
+                {
+                    message = "Nhân viên thanh toán không tồn tại. Vui lòng đăng nhập lại."
+                });
+            }
+
             var billExists = await _context.Bills.AnyAsync(b => b.OrderID == dto.OrderID);
             if (billExists) return BadRequest(new { message = "Đơn hàng này đã được thanh toán!" });
 
@@ -183,7 +190,7 @@ namespace backend.Controllers
                 DiscountAmount = discountAmount,
                 TaxAmount = taxAmount,
                 FinalAmount = finalAmount,
-                CreatedBy = dto.EmployeeID > 0 ? dto.EmployeeID : 1, 
+                CreatedBy = dto.EmployeeID,
                 CreatedAt = DateTime.Now
             };
 
@@ -205,6 +212,6 @@ namespace backend.Controllers
     {
         public int OrderID { get; set; }
         public string? PromotionCode { get; set; }
-        public int EmployeeID { get; set; } = 1;
+        public int EmployeeID { get; set; }
     }
 }
