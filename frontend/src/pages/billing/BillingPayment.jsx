@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import IconGlyph from '../../components/common/IconGlyph';
+import { useAuth } from '../../context/AuthContext';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5249/api';
 const API_BILL_URL = `${BASE_URL}/Bill`;
@@ -14,6 +15,7 @@ const RESTAURANT_PAYMENT_CONFIG = {
 };
 
 export default function BillingPayment() {
+    const { currentUser } = useAuth();
     const [activeTab, setActiveTab] = useState('pending');
     const [pendingOrders, setPendingOrders] = useState([]);
     const [paidBills, setPaidBills] = useState([]);
@@ -141,6 +143,12 @@ export default function BillingPayment() {
     const handleProcessPayment = async (e) => {
         e.preventDefault();
 
+        const employeeID = Number(currentUser?.employeeId);
+        if (!Number.isInteger(employeeID) || employeeID <= 0) {
+            showToast('Vui lòng đăng nhập bằng tài khoản nhân viên trước khi thanh toán.', 'error');
+            return;
+        }
+
         if (paymentMethod === 'Cash' && Number(cashGiven) < grandTotal) {
             showToast('Số tiền khách đưa chưa đủ để thanh toán!', 'error');
             return;
@@ -150,7 +158,7 @@ export default function BillingPayment() {
             const payload = {
                 orderID: selectedOrder.orderID,
                 promotionCode: appliedPromo ? appliedPromo.code : null,
-                employeeID: 1,
+                employeeID,
                 paymentMethod: paymentMethod,
                 transactionNo: `${paymentMethod.toUpperCase()}-${Date.now().toString().slice(-6)}`
             };
